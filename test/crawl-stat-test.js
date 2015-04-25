@@ -1,0 +1,162 @@
+var assert    = require("assert");
+var _         = require("underscore");
+var memstat   = require("../plugins/stat-plugin.js");
+var logger    = require("../plugins/log-plugin.js");
+
+var testSite  = require("./website/start.js").site;
+
+var crawler = require("../index.js");
+
+
+
+describe('Stat Plugin', function() {
+
+        it('should return only one page stat', function(done) {
+
+            var c = new crawler.Crawler();
+            var stat = new memstat.Plugin(c);
+
+            c.on("end", function(){
+
+                assert(stat.data.numberOfUrls == 1, "Incorrect number of crawled urls : " + stat.data.numberOfUrls);
+                assert(stat.data.contentTypes['text/html; charset=UTF-8'] == 1);
+                assert(stat.data.numberOfHTMLs == 1, "Incorrect number of crawled HTML pages : " + stat.data.numberOfHTMLs);
+                //c.removeAllListeners(["crawl"]);
+                done();
+
+            });
+
+            c.queue({url : "http://localhost:9999/index.html"});
+
+        });
+
+
+        it('should return only one page stat for an HTML page without tag', function(done) {
+
+            var c = new crawler.Crawler();
+            var stat = new memstat.Plugin(c);
+
+            c.on("end", function(){
+
+                assert(stat.data.numberOfUrls == 1, "Incorrect number of crawled urls : " + stat.data.numberOfUrls);
+                //assert(stat.data.contentTypes['text/html; charset=UTF-8'] == 1);
+                assert(stat.data.numberOfHTMLs == 0, "Incorrect number of crawled HTML pages : " + stat.data.numberOfHTMLs);
+                done();
+
+            });
+
+            c.queue({url : "http://localhost:9999/without-tags.html"});
+
+        });
+
+
+        it('should return only one page stat for a text page', function(done) {
+
+            var c = new crawler.Crawler();
+            var stat = new memstat.Plugin(c);
+
+            c.on("end", function(){
+
+                assert(stat.data.numberOfUrls == 1, "Incorrect number of crawled urls : " + stat.data.numberOfUrls);
+                assert(stat.data.contentTypes['text/plain; charset=UTF-8'] == 1);
+                assert(stat.data.numberOfHTMLs == 0, "Incorrect number of crawled HTML pages : " + stat.data.numberOfHTMLs);
+                done();
+
+            });
+
+            c.queue({url : "http://localhost:9999/test.txt"});
+
+        });
+
+        it('should return only internal pages stat', function(done) {
+
+            var c = new crawler.Crawler();
+            var stat = new memstat.Plugin(c);
+            //var log = new logger.Plugin(c);
+
+            c.on("end", function(){
+
+                assert(stat.data.numberOfUrls == 7, "Incorrect number of crawled urls : " + stat.data.numberOfUrls);
+                assert(stat.data.contentTypes['text/html; charset=UTF-8'] == 6, "Incorrect number of HTML content type");
+                assert(stat.data.numberOfHTMLs == 6, "Incorrect number of crawled HTML pages : " + stat.data.numberOfHTMLs);
+                done();
+
+            });
+
+            c.queue({url : "http://localhost:9999/internal-links.html"});
+
+        });
+
+
+        it('should return 1 internal pages stat for a depthLimit = 0', function(done) {
+
+            var c = new crawler.Crawler({depthLimit : 0});
+            var stat = new memstat.Plugin(c);
+            //var log = new logger.Plugin(c);
+
+            c.on("end", function(){
+
+                assert(stat.data.numberOfUrls == 1, "Incorrect number of crawled urls : " + stat.data.numberOfUrls);
+                assert(stat.data.contentTypes['text/html; charset=UTF-8'] == 1, "Incorrect number of HTML content type");
+                assert(stat.data.numberOfHTMLs == 1, "Incorrect number of crawled HTML pages : " + stat.data.numberOfHTMLs);
+                done();
+
+            });
+
+            c.queue({url : "http://localhost:9999/internal-links.html"});
+
+        });
+
+        it('should return 4 internal pages stat for a depthLimit = 1', function(done) {
+
+            var c = new crawler.Crawler({depthLimit : 1});
+            var stat = new memstat.Plugin(c);
+            //var log = new logger.Plugin(c);
+
+            c.on("end", function(){
+
+                assert(stat.data.numberOfUrls == 4, "Incorrect number of crawled urls : " + stat.data.numberOfUrls);
+                assert(stat.data.contentTypes['text/html; charset=UTF-8'] == 4, "Incorrect number of HTML content type");
+                assert(stat.data.numberOfHTMLs == 4, "Incorrect number of crawled HTML pages : " + stat.data.numberOfHTMLs);
+                done();
+
+            });
+
+            c.queue({url : "http://localhost:9999/internal-links.html"});
+
+        });
+
+        it('should return only dofollow pages stat', function(done) {
+
+            var c = createCrawlerWithCondition();
+            var stat = new memstat.Plugin(c);
+            //var log = new logger.Plugin(c);
+
+            c.on("end", function(){
+
+                assert(stat.data.numberOfUrls == 6, "Incorrect number of crawled urls : " + stat.data.numberOfUrls);
+                assert(stat.data.contentTypes['text/html; charset=UTF-8'] == 5, "Incorrect number of HTML content type");
+                assert(stat.data.numberOfHTMLs == 5, "Incorrect number of crawled HTML pages : " + stat.data.numberOfHTMLs);
+                done();
+
+            });
+
+            c.queue({url : "http://localhost:9999/internal-links.html"});
+
+        });
+
+});
+
+
+function createCrawlerWithCondition() {
+
+  var c = new crawler.Crawler({
+
+    canCrawl : function(parentUri, link, anchor, isDoFollow) {
+        return isDoFollow;
+    }
+
+  });
+  return c;
+
+}

@@ -1,0 +1,45 @@
+{
+  "name": "crawler.ninja",
+  "version": "0.0.1",
+  "description": "A web crawler made for the SEO based on plugins. Please wait or test ... still in beta",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/christophebe/crawler.ninja"
+  },
+  "dependencies": {
+    "cheerio": "0.18.0",
+    "generic-pool": "2.1.1",
+    "iconv": "2.1.6",
+    "iconv-lite": "0.4.4",
+    "jschardet": "1.1.0",
+    "lodash": "2.4.1",
+    "request": "2.42.0",
+    "URIjs": "^1.14.2",
+    "collections": "*",
+    "crypto": "0.0.3",
+    "underscore": "^1.8.2"
+  },
+  "optionalDependencies": {
+    "iconv": "*"
+  },
+  "devDependencies": {
+    "mocha": "*",
+    "expect": "*",
+    "express": "*",
+    "serve-static": "*"
+  },
+  "keywords": [
+    "web",
+    "crawler",
+    "crawler",
+    "seo",
+    "crawler"
+  ],
+  "author": "Christophe Lombart",
+  "license": "Apache",
+  "bugs": {
+    "url": "https://github.com/christophebe/crawler.ninja/issues"
+  },
+  "homepage": "https://github.com/christophebe/crawler.ninja"
+}
