@@ -4,7 +4,7 @@ Crawler Ninja
 This crawler aims to help SEO to build custom solutions for crawling/scraping sites.
 For example, this crawl can help to audit a site, find expired domains, build corpus, find netlinking spots, retrieve site ranking, check if web pages are correctly indexed, ...
 
-This is just a matter of plugin ! :-) We plan to build generic & simple plugins but you are free to create your own.
+This is just a matter of plugins ! :-) We plan to build generic & simple plugins but you are free to create your own.
 
 The best environment to run Crawler Ninja is a linux server.
 
@@ -19,6 +19,7 @@ How to install
 
 Crash course
 ------------
+*How to use an existing plugin ?*
 
 ```javascript
 var logger    = require("./plugins/log-plugin.js");
