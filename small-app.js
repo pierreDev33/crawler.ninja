@@ -12,6 +12,9 @@ var c = new crawler.Crawler({
 });
 
 //var log = new logger.Plugin(c);
+var logger    = require("./plugins/log-plugin.js");
+var ep        = require("./plugins/expireddomains-plugin.js");
+var crawler = require("./index.js");
 var expired = new ep.Plugin(c);
 
 

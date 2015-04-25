@@ -1,6 +1,6 @@
 {
-  "name": "crawler.ninja",
-  "version": "0.0.1",
+  "name": "crawler-ninja",
+  "version": "0.1.0",
   "description": "A web crawler made for the SEO based on plugins. Please wait or test ... still in beta",
   "main": "index.js",
   "repository": {
