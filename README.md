@@ -22,12 +22,11 @@ Crash course
 *How to use an existing plugin ?*
 
 ```javascript
-var logger    = require("./plugins/log-plugin.js");
 var crawler = require("crawler-ninja");
+var logger  = require("crawler-ninja/plugins/log-plugin");
 
 var c = new crawler.Crawler();
 
-//var log = new logger.Plugin(c);
 var log = new logger.Plugin(c);
 
 c.on("end", function() {
@@ -47,10 +46,11 @@ Options reference
 
 TODO
 
-Plugins
--------
+Current Plugins
+---------------
 
 - Console Log
+- Stat
 - Audit
 
 
