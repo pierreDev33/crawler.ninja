@@ -42,10 +42,10 @@ c.queue({url : "http://www.mysite.com/"});
 ```
 This script logs on the console all crawled pages thanks to the usage of the log-plugin component.
 
-The Crawler component emits different kind of events that plugins can uses (see below)
+The Crawler component emits different kind of events that plugins can use (see below).
 When the crawl ends, the event 'end' is emitted.
 
-* Create a new plugin
+*Create a new plugin*
 
 This is not mandatory to implement all crawler events. You can also reduce the scope of the crawl by using the different options (see below).
 
