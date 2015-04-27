@@ -47,9 +47,9 @@ When the crawl ends, the event 'end' is emitted.
 
 ###Create a new plugin
 
-The following scripts show you the methods/events callbacks that your have to implement for create a new plugin.
+The following scripts show you the methods/events callbacks that your have to implement for creating a new plugin.
 
-This is not mandatory to implement all crawler events. You can also reduce the scope of the crawl by using the different options (see below the section :  option references).
+This is not mandatory to implement all crawler events. You can also reduce the scope of the crawl by using the different crawl options (see below the section :  option references).
 
 
 ```javascript
@@ -226,5 +226,6 @@ ChangeLog
 
 0.1.0
  - crawler engine that support navigation through a.href, detect images, links tag & scripts.
- - Add flexible parameters to crawl (see in the file : index.js) like the crawl depth, crawl rates, craw external links, ...
+ - Add flexible parameters to crawl (see the section crawl option above) like the crawl depth, crawl rates, craw external links, ...
  - Implement a basic log plugin & an SEO audit plugin.
+ - Unit tests
