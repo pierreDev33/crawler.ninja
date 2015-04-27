@@ -2,7 +2,7 @@ Crawler Ninja
 -------------
 
 This crawler aims to help SEO to build custom solutions for crawling/scraping sites.
-For example, this crawl can help to audit a site, find expired domains, build corpus, find netlinking spots, retrieve site ranking, check if web pages are correctly indexed, ...
+For example, it can help to audit a site, find expired domains, build corpus, find netlinking spots, retrieve site ranking, check if web pages are correctly indexed, ...
 
 This is just a matter of plugins ! :-) We plan to build generic & simple plugins but you are free to create your owns.
 
@@ -19,7 +19,7 @@ How to install
 
 Crash course
 ------------
-*How to use an existing plugin ?*
+###How to use an existing plugin ?
 
 ```javascript
 var crawler = require("crawler-ninja");
@@ -45,9 +45,11 @@ This script logs on the console all crawled pages thanks to the usage of the log
 The Crawler component emits different kind of events that plugins can use (see below).
 When the crawl ends, the event 'end' is emitted.
 
-*Create a new plugin*
+###Create a new plugin
 
-This is not mandatory to implement all crawler events. You can also reduce the scope of the crawl by using the different options (see below).
+The following scripts show you the methods/events callbacks that your have to implement for create a new plugin.
+
+This is not mandatory to implement all crawler events. You can also reduce the scope of the crawl by using the different options (see below the section :  option references).
 
 
 ```javascript
@@ -74,8 +76,8 @@ function Plugin(crawler) {
      * Emits when the crawler crawls a resource (html,js,css, pdf, ...)
      *
      * @param result : the result of the crawled resource
-     * @param the jquery like object for accessing to the HTML tags. Null is the resource
-     *        is not an HTML
+     * @param the jquery like object for accessing to the HTML tags. Null is if the resource is not an HTML.
+     * See the project cheerio : https://github.com/cheeriojs/cheerio
      */
     this.crawler.on("crawl", function(result,$) {
 
@@ -124,10 +126,81 @@ module.exports.Plugin = Plugin;
 ```
 
 
-Options reference
+Option references
 -----------------
 
-TODO
+
+### The main crawler config options
+
+You can pass these options to the Crawler() constructor like :
+
+```javascript
+
+
+var c = new crawler.Crawler({
+  externalLinks : true,
+  scripts : false,
+  images : false
+});
+
+
+```
+
+- maxConnections     : the number of connections used to crawl, default is 10
+- externalLinks      : if true crawl external links, default = false
+- scripts            : if true crawl script tags, default = true
+- links              : if true crawl link tags, default = true
+- linkTypes          : the type of the links tags to crawl (match to the rel attribute), default = ["canonical", "stylesheet"]
+- images             : if true crawl images, default = true
+- protocols          : list of the protocols to crawl, default = ["http", "https"]
+- timeout            : timeout per requests in milliseconds, default = 8000
+- retries            : number of retries if the request fails, default = 0
+- retryTimeout       : number of milliseconds to wait before retrying,  default = 10000
+- skipDuplicates     : if true skips URIs that were already crawled, default is true
+- rateLimits         : number of milliseconds to delay between each requests , default = 0.
+                         Note that this option will force crawler to use only one connection
+- depthLimit         : the depth limit for the crawl, default is no limit
+- followRedirect     : if true, the crawl will not return the 301, it will follow directly the redirection, default is false
+
+
+
+
+### Other options
+You can pass these options to the Crawler() constructor if you want them to be global or as
+items in the queue() calls if you want them to be specific to that item (overwriting global options)
+
+This options list is a strict superset of [mikeal's request options](https://github.com/mikeal/request#requestoptions-callback) and will be directly passed to
+the request() method.
+
+
+Pool options:
+
+ * `priorityRange`: Number, Range of acceptable priorities starting from 0 (Default 10),
+ * `priority`: Number, Priority of this request (Default 5),
+
+
+Server-side DOM options:
+
+ * `jQuery`: true, false or ConfObject (Default true)
+   see below [Working with Cheerio or JSDOM](https://github.com/paulvalla/node-crawler/blob/master/README.md#working-with-cheerio-or-jsdom)
+
+Charset encoding:
+
+ * `forceUTF8`: Boolean, if true will try to detect the page charset and convert it to UTF8 if necessary. Never worry about encoding anymore! (Default false),
+ * `incomingEncoding`: String, with forceUTF8: true to set encoding manually (Default null)
+     `incomingEncoding : 'windows-1255'` for example
+
+Cache:
+
+ * `cache`: Boolean, if true stores requests in memory (Default false)
+
+
+Other:
+
+ * `userAgent`: String, defaults to "node-crawler/[version]"
+ * `referer`: String, if truthy sets the HTTP referer header
+ * `rateLimits`: Number of milliseconds to delay between each requests (Default 0) Note that this option will force crawler to use only one connection (for now)
+
 
 Current Plugins
 ---------------

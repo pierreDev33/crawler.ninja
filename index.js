@@ -33,10 +33,10 @@ var DEFAULT_CRAWL_IMAGES = true;
  *  - externalLinks      : if true crawl external links
  *  - scripts            : if true crawl script tags
  *  - links              : if true crawl link tags
- *  - linkTypes          : the type of the links tags to crawl (match to the rel attribute)
+ *  - linkTypes          : the type of the links tags to crawl (match to the rel attribute), default : ["canonical", "stylesheet"]
  *  - images             : if true crawl images
- *  - protocols          : list of the protocols to crawl
- *  - timeout            : timeout per requests in milliseconds (Default 5000)
+ *  - protocols          : list of the protocols to crawl, default = ["http", "https"]
+ *  - timeout            : timeout per requests in milliseconds (Default 8000)
  *  - retries            : number of retries if the request fails (default 0)
  *  - retryTimeout       : number of milliseconds to wait before retrying (Default 10000)
  *  - skipDuplicates     : if true skips URIs that were already crawled - default is true
