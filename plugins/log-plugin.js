@@ -22,11 +22,12 @@ function Plugin(crawler) {
 
    this.crawler.on("crawl", function(result, $) {
      console.log(result.statusCode + " - " + result.options.method +" - " +
-                 result.uri + ' - response time : ' + result.responseTime + "ms");
+                 result.uri + ' - response time : ' + result.responseTime + "ms" +
+                 (result.proxy ? " - proxy : " + result.proxy : ""));
    });
 
    this.crawler.on("error", function(error, result) {
-      console.log("Error on : " + result.uri + ":" +  error);
+      console.log("Error on : " + result.uri + ":" +  error + (result.proxy ? " - proxy : " + result.proxy : ""));
    });
 
  }

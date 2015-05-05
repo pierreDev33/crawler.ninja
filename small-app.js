@@ -1,31 +1,47 @@
-var logger    = require("./plugins/log-plugin.js");
-var ep        = require("./plugins/expireddomains-plugin.js");
-var crawler = require("./index.js");
+var proxyLoader = require("simple-proxies/lib/proxyfileloader");
+var logger      = require("./plugins/log-plugin.js");
+var crawler     = require("./index.js");
 
+var proxyFile = "../../proxies.txt"; //change this !
 
-var c = new crawler.Crawler({
-    externalLinks : true,
-    images : false,
-    scripts : false,
-    links : false, //link tags used for css, canonical, ...
-    followRedirect : true
-});
+// Load proxies
+var config = proxyLoader.config()
+                        .setProxyFile(proxyFile)
+                        .setCheckProxies(false)
+                        .setRemoveInvalidProxies(false);
 
-//var log = new logger.Plugin(c);
-var logger    = require("./plugins/log-plugin.js");
-var ep        = require("./plugins/expireddomains-plugin.js");
-var crawler = require("./index.js");
-var expired = new ep.Plugin(c);
+proxyLoader.loadProxyFile(config, function(error, proxyList) {
+    if (error) {
+      console.log(error);
 
-
-
-c.on("end", function() {
-
-    var end = new Date();
-    console.log("Well done Sir !, done in : " + (end - start));
-
+    }
+    else {
+       crawl(proxyList);
+    }
 
 });
 
-var start = new Date();
-c.queue({url : "http://www.authorize.net/"});
+
+function crawl(proxyList){
+    var c = new crawler.Crawler({
+        externalLinks : true,
+        images : false,
+        scripts : false,
+        links : false, //link tags used for css, canonical, ...
+        followRedirect : true,
+        proxyList : proxyList
+    });
+
+    var log = new logger.Plugin(c);
+
+    c.on("end", function() {
+
+        var end = new Date();
+        console.log("Well done Sir !, done in : " + (end - start));
+
+
+    });
+
+    var start = new Date();
+    c.queue({url : "http://www.authorize.net/"});
+}

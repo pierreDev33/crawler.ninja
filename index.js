@@ -44,6 +44,7 @@ var DEFAULT_CRAWL_IMAGES = true;
  *                         Note that this option will force crawler to use only one connection
  *  - depthLimit         : the depth limit for the crawl
  *  - followRedirect     : if true, the crawl will not return the 301, it will follow directly the redirection
+ *  - proxyList          : the list of proxies (see the project simple-proxies on npm)
  *  + all params provided by nodejs request : https://github.com/request/request
  */
 function Crawler(config) {
@@ -63,6 +64,7 @@ function Crawler(config) {
     if (config) {
       _.extend(this.config, config);
     }
+
 
     // assign the default updateDepth method used to calculate the crawl depth
     this.updateDepth = updateDepth;

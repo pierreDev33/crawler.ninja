@@ -8,16 +8,18 @@
     "url": "https://github.com/christophebe/crawler.ninja"
   },
   "dependencies": {
+    "URIjs": "^1.14.2",
     "cheerio": "0.18.0",
+    "collections": "*",
+    "crypto": "0.0.3",
     "generic-pool": "2.1.1",
     "iconv": "2.1.6",
     "iconv-lite": "0.4.4",
     "jschardet": "1.1.0",
     "lodash": "2.4.1",
     "request": "2.42.0",
-    "URIjs": "^1.14.2",
-    "collections": "*",
-    "crypto": "0.0.3",
+    "riak-js": "^1.0.3",
+    "simple-proxies": "^0.1.8",
     "underscore": "^1.8.2"
   },
   "optionalDependencies": {
