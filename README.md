@@ -14,7 +14,7 @@ Help & Forks welcomed ! or please wait ... work in progress !
 How to install
 --------------
 
-    $ npm install crawler-ninja
+    $ npm install crawler-ninja --save
 
 
 Crash course
@@ -146,22 +146,23 @@ var c = new crawler.Crawler({
 
 ```
 
-- maxConnections     : the number of connections used to crawl, default is 10
-- externalLinks      : if true crawl external links, default = false
-- scripts            : if true crawl script tags, default = true
-- links              : if true crawl link tags, default = true
-- linkTypes          : the type of the links tags to crawl (match to the rel attribute), default = ["canonical", "stylesheet"]
-- images             : if true crawl images, default = true
-- protocols          : list of the protocols to crawl, default = ["http", "https"]
-- timeout            : timeout per requests in milliseconds, default = 8000
-- retries            : number of retries if the request fails, default = 0
-- retryTimeout       : number of milliseconds to wait before retrying,  default = 10000
-- skipDuplicates     : if true skips URIs that were already crawled, default is true
+- maxConnections     : the number of connections used to crawl, default is 10.
+- externalLinks      : if true crawl external links, default = false.
+- scripts            : if true crawl script tags, default = true.
+- links              : if true crawl link tags, default = true.
+- linkTypes          : the type of the links tags to crawl (match to the rel attribute), default = ["canonical", "stylesheet"].
+- images             : if true crawl images, default = true.
+- protocols          : list of the protocols to crawl, default = ["http", "https"].
+- timeout            : timeout per requests in milliseconds, default = 8000.
+- retries            : number of retries if the request fails, default = 0.
+- retryTimeout       : number of milliseconds to wait before retrying,  default = 10000.
+- skipDuplicates     : if true skips URIs that were already crawled, default is true.
 - rateLimits         : number of milliseconds to delay between each requests , default = 0.
                          Note that this option will force crawler to use only one connection
-- depthLimit         : the depth limit for the crawl, default is no limit
-- followRedirect     : if true, the crawl will not return the 301, it will follow directly the redirection, default is false
-
+- depthLimit         : the depth limit for the crawl, default is no limit.
+- followRedirect     : if true, the crawl will not return the 301, it will
+ follow directly the redirection, default is false.
+- proxyList          : The list of proxy to use for each crawler request (see below).
 
 
 
@@ -201,6 +202,17 @@ Other:
  * `referer`: String, if truthy sets the HTTP referer header
  * `rateLimits`: Number of milliseconds to delay between each requests (Default 0) Note that this option will force crawler to use only one connection (for now)
 
+Using proxies
+-------------
+
+Crawler.ninja can be configured to execute each http request through a proxy.
+We are using the npm package "simple-proxies".
+
+You have to install it in your project with the command :
+
+    $ npm install simple-proxies --save
+
+Check the file small-app.js in the project to see how to use proxies with this crawler.    
 
 Current Plugins
 ---------------
@@ -229,3 +241,6 @@ ChangeLog
  - Add flexible parameters to crawl (see the section crawl option above) like the crawl depth, crawl rates, craw external links, ...
  - Implement a basic log plugin & an SEO audit plugin.
  - Unit tests
+
+ 0.1.1
+ - Add proxy support
