@@ -14,6 +14,7 @@ var DEFAULT_RETRY_TIMEOUT = 10000;
 var DEFAULT_SKIP_DUPLICATES = true;
 var DEFAULT_RATE_LIMITS = 0;
 var DEFAULT_CRAWL_EXTERNAL_LINKS = false;
+var DEFAULT_CRAWL_EXTERNAL_DOMAINS = false;
 var DEFAULT_PROTOCOLS_TO_CRAWL = ["http", "https"];
 var DEFAULT_FOLLOW_301 = false;
 var DEFAULT_DEDUG = false;
@@ -24,13 +25,14 @@ var DEFAULT_CRAWL_IMAGES = true;
 
 
 /**
- * The crawler object
+ * The SEO crawler object
  *
  * @param config used to customize the crawler.
  *
  *  The current config attributes are :
  *  - maxConnections     : the number of connections used to crawl - default is 10
  *  - externalLinks      : if true crawl external links
+ *  - externalDomains    : if true crawl the complete external domains. This option can crawl a lot of different domains
  *  - scripts            : if true crawl script tags
  *  - links              : if true crawl link tags
  *  - linkTypes          : the type of the links tags to crawl (match to the rel attribute), default : ["canonical", "stylesheet"]
@@ -53,9 +55,14 @@ function Crawler(config) {
     // Store the depth for each crawled url
     // Override config.updateDepth function in order to use another storage
     // This default implementation is not recommanded for big crawl
+    // TODO : use an external store for the following collections
     this.depthUrls = new Map();
 
+    // The crawl history
     this.history = new Set();
+
+    // list of the hosts from which the crawl starts
+    this.startFromHosts = new Set();
 
     // Default config
     this.config = this.createDefaultConfig();
@@ -89,9 +96,11 @@ util.inherits(Crawler, events.EventEmitter);
  * @param The url to crawl
  *
  */
-Crawler.prototype.queue = function(url) {
+Crawler.prototype.queue = function(urlInfo) {
 
-  this.crawler.queue(url);
+    this.startFromHosts.add(URI.host(urlInfo.url));
+    this.crawler.queue(urlInfo);
+
 }
 
 /**
@@ -103,21 +112,22 @@ Crawler.prototype.createDefaultConfig = function() {
   var self = this;
   return {
 
-    maxConnections : DEFAULT_NUMBER_OF_CONNECTIONS,
+    maxConnections  : DEFAULT_NUMBER_OF_CONNECTIONS,
     timeout         : DEFAULT_TIME_OUT,
-    retries        : DEFAULT_RETRIES,
-    retryTimeout   : DEFAULT_RETRY_TIMEOUT,
-    skipDuplicates : DEFAULT_SKIP_DUPLICATES,
-    rateLimits     : DEFAULT_RATE_LIMITS,
-    externalLinks  : DEFAULT_CRAWL_EXTERNAL_LINKS,
-    protocols      : DEFAULT_PROTOCOLS_TO_CRAWL,
-    depthLimit     : DEFAULT_DEPTH_LIMIT,
-    followRedirect : DEFAULT_FOLLOW_301,
-    debug          : DEFAULT_DEDUG,
-    images         : DEFAULT_CRAWL_IMAGES,
-    links          : DEFAULT_CRAWL_LINKS,
-    linkTypes      : DEFAULT_LINKS_TYPES,
-    scripts        : DEFAULT_CRAWL_SCRIPTS,
+    retries         : DEFAULT_RETRIES,
+    retryTimeout    : DEFAULT_RETRY_TIMEOUT,
+    skipDuplicates  : DEFAULT_SKIP_DUPLICATES,
+    rateLimits      : DEFAULT_RATE_LIMITS,
+    externalLinks   : DEFAULT_CRAWL_EXTERNAL_LINKS,
+    externalDomains : DEFAULT_CRAWL_EXTERNAL_DOMAINS,
+    protocols       : DEFAULT_PROTOCOLS_TO_CRAWL,
+    depthLimit      : DEFAULT_DEPTH_LIMIT,
+    followRedirect  : DEFAULT_FOLLOW_301,
+    debug           : DEFAULT_DEDUG,
+    images          : DEFAULT_CRAWL_IMAGES,
+    links           : DEFAULT_CRAWL_LINKS,
+    linkTypes       : DEFAULT_LINKS_TYPES,
+    scripts         : DEFAULT_CRAWL_SCRIPTS,
 
     callback : function(error, result, $){
         self.crawl(error, result,$);
@@ -146,7 +156,7 @@ Crawler.prototype.crawl = function (error, result, $) {
         return;
     }
 
-    // if skipDuplicates, don't crawl twice the same url
+    // if skipDuplicates, don't crawl twice the same uri
     if (this.config.skipDuplicates) {
 
       if(this.history.has(result.uri)) {
@@ -166,7 +176,7 @@ Crawler.prototype.crawl = function (error, result, $) {
       this.analyzeHTML(result,$);
     }
 
-    // if 301 & followRedirect = false => chain 301
+    // if 30* & followRedirect = false => chain 30*
     if (result.statusCode >= 300 && result.statusCode <= 399  &&  ! this.config.followRedirect) {
 
         var from = result.uri;
@@ -239,8 +249,6 @@ Crawler.prototype.crawlHrefs = function(result, $) {
         else {
           self.emit("uncrawl", parentUri, linkUri, anchor, isDoFollow);
         }
-
-
       }
 
   });
@@ -375,13 +383,18 @@ Crawler.prototype.isAGoodLinkToCrawl = function(currentDepth, parentUri, link, a
     return false;
   }
 
-  // 3. Check if the link is based on a good protocol
+  // 3. Check if we need to crawl external domains
+  if (! this.startFromHosts.has(URI.host(parentUri)) && ! this.config.externalDomains) {
+    return false;
+  }
+
+  // 4. Check if the link is based on a good protocol
   if (this.config.protocols.indexOf(URI.protocol(link)) < 0) {
     return false;
   }
 
 
-  // 4. Check if there is a rule in the crawler configuration
+  // 5. Check if there is a rule in the crawler configuration
   if (! this.config.canCrawl) {
     return true;
   }

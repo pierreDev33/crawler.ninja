@@ -214,8 +214,6 @@ Plugin.prototype.crawlLink = function(page, link, anchor, isDoFollow) {
     // External links
     if (URI.host(page) != URI.host(link)) {
 
-        //TODO : do a request in order to get more info on the external link ?
-        //       see what Screamingfrog is doing wiht external links
         addToListMap(this.externalLinks, link, page);
     }
 
