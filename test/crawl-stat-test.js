@@ -72,7 +72,7 @@ describe('Stat Plugin', function() {
 
             var c = new crawler.Crawler();
             var stat = new memstat.Plugin(c);
-            //var log = new logger.Plugin(c);
+            var log = new logger.Plugin(c);
 
             c.on("end", function(){
 
