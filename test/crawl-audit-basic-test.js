@@ -94,6 +94,25 @@ describe('Audit Plugin Basic tests', function() {
 
         });
 
+        it('Should crawl images', function(done) {
+
+            var c = new crawler.Crawler();
+            var audit = new seoaudit.Plugin(c);
+            //var log = new logger.Plugin(c);
+
+            c.on("end", function(){
+
+                var resource = audit.resources.get("http://localhost:9999/200x200-image.jpg");
+                assert(resource.contentType =='image/jpeg');
+
+                done();
+
+            });
+
+            c.queue({url : "http://localhost:9999/page1.html"});
+
+        });
+
         it('Should crawl 404 urls', function(done) {
 
             var c = new crawler.Crawler();
@@ -149,7 +168,7 @@ describe('Audit Plugin Basic tests', function() {
             c.on("end", function(){
 
                 var resource = audit.resources.get("http://localhost:9999/timeout");
-                
+
                 assert(resource.statusCode==408);
                 assert(audit.outLinks.get("http://localhost:9999/page4.html")[0].page == "http://localhost:9999/timeout");
                 assert(audit.outLinks.get("http://localhost:9999/page4.html")[1].page == "http://localhost:9999/");

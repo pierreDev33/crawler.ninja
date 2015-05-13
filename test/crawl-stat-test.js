@@ -76,7 +76,7 @@ describe('Stat Plugin', function() {
 
             c.on("end", function(){
 
-                assert(stat.data.numberOfUrls == 7, "Incorrect number of crawled urls : " + stat.data.numberOfUrls);
+                assert(stat.data.numberOfUrls == 8, "Incorrect number of crawled urls : " + stat.data.numberOfUrls);
                 assert(stat.data.contentTypes['text/html; charset=UTF-8'] == 6, "Incorrect number of HTML content type");
                 assert(stat.data.numberOfHTMLs == 6, "Incorrect number of crawled HTML pages : " + stat.data.numberOfHTMLs);
                 done();
