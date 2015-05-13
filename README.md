@@ -301,7 +301,7 @@ Using the crawl logger in your own plugin
 ------------------------------------------
 
 The current crawl logger is based on [bunyan](https://github.com/trentm/node-bunyan).
-it logs the main crawl action in the file : ./logs/crawler.log
+it logs the main crawl actions in the file : ./logs/crawler.log
 
 You can use it in your own Plugin by using the following code.
 
@@ -347,5 +347,5 @@ ChangeLog
  - Add proxy support
  - Gives the possibility to crawl (or not) the external domains which is different than crawling only the external links. Crawl external links means to check the http status & content of the linked external resources which is different of expand the crawl through the entire external domains.
 
-0.1.2
+0.1.2 (in dev)
  - Add log component.  
