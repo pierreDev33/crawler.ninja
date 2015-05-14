@@ -15,13 +15,17 @@ var DEFAULT_SKIP_DUPLICATES = true;
 var DEFAULT_RATE_LIMITS = 0;
 var DEFAULT_CRAWL_EXTERNAL_LINKS = false;
 var DEFAULT_CRAWL_EXTERNAL_DOMAINS = false;
+var DEFAULT_CRAWL_SCRIPTS = true;   // Crawl <script>
+var DEFAULT_CRAWL_LINKS = true;     // Crawl <link>
+var DEFAULT_CRAWL_IMAGES = true;
+
 var DEFAULT_PROTOCOLS_TO_CRAWL = ["http", "https"];
 var DEFAULT_FOLLOW_301 = false;
 var DEFAULT_DEDUG = false;
-var DEFAULT_CRAWL_SCRIPTS = true;   // Crawl <script>
-var DEFAULT_CRAWL_LINKS = true;     // Crawl <link>
+
 var DEFAULT_LINKS_TYPES = ["canonical", "stylesheet"]
-var DEFAULT_CRAWL_IMAGES = true;
+
+var DEFAULT_USER_AGENT = "userAgent";
 
 
 /**
@@ -128,6 +132,7 @@ Crawler.prototype.createDefaultConfig = function() {
     links           : DEFAULT_CRAWL_LINKS,
     linkTypes       : DEFAULT_LINKS_TYPES,
     scripts         : DEFAULT_CRAWL_SCRIPTS,
+    userAgent       : DEFAULT_USER_AGENT, 
 
     callback : function(error, result, $){
         self.crawl(error, result,$);

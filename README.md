@@ -170,10 +170,6 @@ var c = new crawler.Crawler({
 You can pass these options to the Crawler() constructor if you want them to be global or as
 items in the queue() calls if you want them to be specific to that item (overwriting global options)
 
-This options list is a strict superset of [mikeal's request options](https://github.com/mikeal/request#requestoptions-callback) and will be directly passed to
-the request() method.
-
-
 Pool options:
 
  * `priorityRange`: Number, Range of acceptable priorities starting from 0 (Default 10),
@@ -201,6 +197,8 @@ Other:
  * `userAgent`: String, defaults to "node-crawler/[version]"
  * `referer`: String, if truthy sets the HTTP referer header
  * `rateLimits`: Number of milliseconds to delay between each requests (Default 0) Note that this option will force crawler to use only one connection (for now)
+
+This options list is a strict superset of [mikeal's request options](https://github.com/mikeal/request#requestoptions-callback) and will be directly passed to the request() method.
 
 
 ### Add your own crawl rules
@@ -328,8 +326,8 @@ Rough todolist
 --------------
 
  * More & more plugins (in progress)
- * Use Riak as default persistence layer
- * Use RabbitMQ
+ * Use Riak as default persistence layer/Crawler Store
+ * Multicore architecture - Use RabbitMQ for bigger crawl
  * CLI for extracting data from the Crawl Store
  * Build UI : dashboards, view project data, ...
 
@@ -347,5 +345,7 @@ ChangeLog
  - Add proxy support
  - Gives the possibility to crawl (or not) the external domains which is different than crawling only the external links. Crawl external links means to check the http status & content of the linked external resources which is different of expand the crawl through the entire external domains.
 
-0.1.2 (in dev)
- - Add log component.  
+0.1.2
+ - Review Log component.
+ - set the default userAgent to NinjaBot
+ - update README
