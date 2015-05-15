@@ -339,13 +339,14 @@ ChangeLog
  - crawler engine that support navigation through a.href, detect images, links tag & scripts.
  - Add flexible parameters to crawl (see the section crawl option above) like the crawl depth, crawl rates, craw external links, ...
  - Implement a basic log plugin & an SEO audit plugin.
- - Unit tests
+ - Unit tests.
 
 0.1.1
- - Add proxy support
+ - Add proxy support.
  - Gives the possibility to crawl (or not) the external domains which is different than crawling only the external links. Crawl external links means to check the http status & content of the linked external resources which is different of expand the crawl through the entire external domains.
 
-0.1.2
+0.1.2 (in progress)
  - Review Log component.
- - set the default userAgent to NinjaBot
- - update README
+ - set the default userAgent to NinjaBot.
+ - update README.
+ - avoid crash for long crawl.

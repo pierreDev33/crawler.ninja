@@ -1,4 +1,5 @@
 var events    = require('events');
+var timers    = require('timers');
 var util      = require("util");
 var _         = require("underscore");
 var JsCrawler = require("./lib/crawler.js");
@@ -132,14 +133,17 @@ Crawler.prototype.createDefaultConfig = function() {
     links           : DEFAULT_CRAWL_LINKS,
     linkTypes       : DEFAULT_LINKS_TYPES,
     scripts         : DEFAULT_CRAWL_SCRIPTS,
-    userAgent       : DEFAULT_USER_AGENT, 
+    userAgent       : DEFAULT_USER_AGENT,
 
     callback : function(error, result, $){
         self.crawl(error, result,$);
       },
 
       onDrain : function(){
-        self.emit('end');
+        timers.setImmediate(function(){
+            self.emit('end');
+        });
+
       }
 
 
@@ -156,8 +160,9 @@ Crawler.prototype.createDefaultConfig = function() {
  */
 Crawler.prototype.crawl = function (error, result, $) {
 
+    var self = this;
     if (error) {
-        this.emit("error", error, result);
+        timers.setImmediate(emitErrorEvent, self, error, result);
         return;
     }
 
@@ -173,7 +178,7 @@ Crawler.prototype.crawl = function (error, result, $) {
 
     }
 
-    this.emit("crawl", result, $);
+    timers.setImmediate(emitCrawlEvent, self,result, $);
 
     // if $ is defined, this is an HTML page with an http status 200, crawl the linked resources
     // Other resources can be managed by a plugin (a listener to the event "crawl")
@@ -187,7 +192,7 @@ Crawler.prototype.crawl = function (error, result, $) {
         var from = result.uri;
         var to = result.headers["location"];
         var to = URI.linkToURI(from, to);
-        this.emit("crawlRedirect", from, to, result.statusCode);
+        timers.setImmediate(emitRedirectEvent, self, from, to, result.statusCode);
         this.crawler.queue(to);
 
     }
@@ -245,14 +250,13 @@ Crawler.prototype.crawlHrefs = function(result, $) {
 
         var currentDepth = self.updateDepth(parentUri, linkUri);
 
-        self.emit("crawlLink", parentUri, linkUri, anchor, isDoFollow);
+        timers.setImmediate(emitCrawlHrefEvent, self, "crawlLink", parentUri, linkUri, anchor, isDoFollow);
 
         if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri, anchor, isDoFollow)) {
-
               self.crawler.queue(linkUri);
         }
         else {
-          self.emit("uncrawl", parentUri, linkUri, anchor, isDoFollow);
+          timers.setImmediate(emitCrawlHrefEvent, self, "uncrawl", parentUri, linkUri, anchor, isDoFollow);
         }
       }
 
@@ -284,14 +288,15 @@ Crawler.prototype.crawlLinks = function(result, $) {
               var linkUri = URI.linkToURI(parentUri, link);
               var currentDepth = self.updateDepth(parentUri, linkUri);
 
-              self.emit("crawlLink", parentUri, linkUri);
+              timers.setImmediate(emitCrawlLinkEvent, self, parentUri, linkUri);
 
               if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
 
-                    self.crawler.queue(linkUri);
+                  self.crawler.queue(linkUri);
+
               }
               else {
-                self.emit("uncrawl", parentUri, linkUri);
+                timers.setImmediate(emitUnCrawlEvent, self, parentUri, linkUri);
               }
           }
 
@@ -319,14 +324,15 @@ Crawler.prototype.crawlScripts = function(result, $) {
         var linkUri = URI.linkToURI(parentUri, link);
         var currentDepth = self.updateDepth(parentUri, linkUri);
 
-        self.emit("crawlLink", parentUri, linkUri);
+        timers.setImmediate(emitCrawlLinkEvent, self, parentUri, linkUri);
 
         if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
 
-              self.crawler.queue(linkUri);
+            self.crawler.queue(linkUri);
+
         }
         else {
-          self.emit("uncrawl", parentUri, linkUri);
+          timers.setImmediate(emitUnCrawlEvent, self, parentUri, linkUri);
         }
       }
 
@@ -353,14 +359,14 @@ Crawler.prototype.crawlImages = function(result, $) {
         var linkUri = URI.linkToURI(parentUri, link);
         var currentDepth = self.updateDepth(parentUri, linkUri);
 
-        self.emit("crawlImage", parentUri, linkUri, alt);
+        timers.setImmediate(emitCrawlImage, self, parentUri, linkUri, alt);
 
         if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
+            self.crawler.queue(linkUri);
 
-              self.crawler.queue(linkUri);
         }
         else {
-          self.emit("uncrawl", parentUri, linkUri);
+          timers.setImmediate(emitUnCrawlEvent, self, parentUri, linkUri);
         }
       }
 
@@ -438,6 +444,35 @@ var updateDepth = function(parentUri, linkUri) {
     }
 
 
+}
+
+function emitCrawlEvent(crawler, result, $) {
+  crawler.emit("crawl", result, $);
+}
+
+function emitErrorEvent(crawler, error, result) {
+  crawler.emit("error", error, result);
+}
+
+function emitRedirectEvent(crawler, from, to, statusCode) {
+  crawler.emit("crawlRedirect", from, to, statusCode);
+}
+
+
+function emitCrawlHrefEvent(crawler, eventName, parentUri, linkUri, anchor, isDoFollow) {
+  crawler.emit(eventName, parentUri, linkUri, anchor, isDoFollow);
+}
+
+function emitCrawlLinkEvent(crawler, parentUri, linkUri ) {
+  crawler.emit("crawlLink", parentUri, linkUri);
+}
+
+function emitUnCrawlEvent(crawler, parentUri, linkUri ) {
+  crawler.emit("uncrawl", parentUri, linkUri);
+}
+
+function emitCrawlImage(crawler, parentUri, linkUri, alt ) {
+  crawler.emit("crawlImage", parentUri, linkUri, alt);
 }
 
 module.exports.Crawler = Crawler;
