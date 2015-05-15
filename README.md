@@ -345,8 +345,10 @@ ChangeLog
  - Add proxy support.
  - Gives the possibility to crawl (or not) the external domains which is different than crawling only the external links. Crawl external links means to check the http status & content of the linked external resources which is different of expand the crawl through the entire external domains.
 
-0.1.2 (in progress)
+0.1.2
  - Review Log component.
  - set the default userAgent to NinjaBot.
  - update README.
- - avoid crash for long crawl.
+
+0.1.3 
+ - avoid crash for long crawls.
