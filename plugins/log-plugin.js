@@ -11,7 +11,7 @@ function Plugin(crawler) {
    var self = this;
 
    this.crawler.on("crawl", function(result, $) {
-      log.info(result.statusCode + " - " + result.options.method +" - " +
+      log.info(result.statusCode + " - " + result.method +" - " +
                        result.uri + ' - response time : ' + result.responseTime + "ms" +
                        (result.proxy ? " - proxy : " + result.proxy : ""));
    });

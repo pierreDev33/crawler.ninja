@@ -2,10 +2,11 @@ var events    = require('events');
 var timers    = require('timers');
 var util      = require("util");
 var _         = require("underscore");
-var JsCrawler = require("./lib/crawler.js");
+var requester = require("./lib/queue-requester");
 var URI       = require('./lib/uri.js');
 var Map       = require("collections/fast-map");
 var Set       = require("collections/fast-set");
+var html      = require("./lib/html.js");
 
 var DEFAULT_NUMBER_OF_CONNECTIONS = 10;
 var DEFAULT_DEPTH_LIMIT = -1; // no limit
@@ -24,10 +25,17 @@ var DEFAULT_PROTOCOLS_TO_CRAWL = ["http", "https"];
 var DEFAULT_FOLLOW_301 = false;
 var DEFAULT_DEDUG = false;
 
-var DEFAULT_LINKS_TYPES = ["canonical", "stylesheet"]
+var DEFAULT_LINKS_TYPES = ["canonical", "stylesheet"];
 
-var DEFAULT_USER_AGENT = "userAgent";
-
+var DEFAULT_USER_AGENT = "NinjaBot";
+var DEFAULT_DEBUG = false;
+var DEFAULT_MULTICORES = false;
+var DEFAULT_NUMBER_OF_CORES = require('os').cpus().length;
+var DEFAULT_CACHE = false;
+var DEFAULT_FORCE_UTF8 = false;
+var DEFAULT_INCOMING_ENCODING = null;
+var DEFAULT_METHOD = 'GET';
+var DEFAULT_REFERER = false;
 
 /**
  * The SEO crawler object
@@ -63,9 +71,6 @@ function Crawler(config) {
     // TODO : use an external store for the following collections
     this.depthUrls = new Map();
 
-    // The crawl history
-    this.history = new Set();
-
     // list of the hosts from which the crawl starts
     this.startFromHosts = new Set();
 
@@ -86,7 +91,7 @@ function Crawler(config) {
       this.updateDepth = this.config.updateDepth;
     }
 
-    this.crawler = new JsCrawler(this.config);
+    this.crawler = new requester.Requester(this.config);
 
     events.EventEmitter.call(this);
 
@@ -117,6 +122,14 @@ Crawler.prototype.createDefaultConfig = function() {
   var self = this;
   return {
 
+
+    cache           : DEFAULT_CACHE,
+    forceUTF8       : DEFAULT_FORCE_UTF8,
+    incomingEncoding: DEFAULT_INCOMING_ENCODING, //TODO remove or optimize
+    method          : DEFAULT_METHOD,
+    referer         : DEFAULT_REFERER,
+    multiCores      : DEFAULT_MULTICORES,
+    numberOfCores   : DEFAULT_NUMBER_OF_CORES,
     maxConnections  : DEFAULT_NUMBER_OF_CONNECTIONS,
     timeout         : DEFAULT_TIME_OUT,
     retries         : DEFAULT_RETRIES,
@@ -134,9 +147,10 @@ Crawler.prototype.createDefaultConfig = function() {
     linkTypes       : DEFAULT_LINKS_TYPES,
     scripts         : DEFAULT_CRAWL_SCRIPTS,
     userAgent       : DEFAULT_USER_AGENT,
+    debug           : DEFAULT_DEBUG,
 
-    callback : function(error, result, $){
-        self.crawl(error, result,$);
+    callback : function(error, result){
+        self.crawl(error, result);
       },
 
       onDrain : function(){
@@ -158,33 +172,26 @@ Crawler.prototype.createDefaultConfig = function() {
  * @param the jquery like object for accessing to the HTML tags. Null is the resource
  *        is not an HTML
  */
-Crawler.prototype.crawl = function (error, result, $) {
+Crawler.prototype.crawl = function (error, result) {
 
     var self = this;
     if (error) {
+        //console.log(error);
         timers.setImmediate(emitErrorEvent, self, error, result);
         return;
     }
 
-    // if skipDuplicates, don't crawl twice the same uri
-    if (this.config.skipDuplicates) {
-
-      if(this.history.has(result.uri)) {
-          return;
-      }
-      else {
-        this.history.add(result.uri);
-      }
-
-    }
+    var $ = html.isHTML(result.body) ? html.$(result.body) : null;
 
     timers.setImmediate(emitCrawlEvent, self,result, $);
 
     // if $ is defined, this is an HTML page with an http status 200, crawl the linked resources
     // Other resources can be managed by a plugin (a listener to the event "crawl")
     if ($) {
+
       this.analyzeHTML(result,$);
     }
+
 
     // if 30* & followRedirect = false => chain 30*
     if (result.statusCode >= 300 && result.statusCode <= 399  &&  ! this.config.followRedirect) {
@@ -193,7 +200,7 @@ Crawler.prototype.crawl = function (error, result, $) {
         var to = result.headers["location"];
         var to = URI.linkToURI(from, to);
         timers.setImmediate(emitRedirectEvent, self, from, to, result.statusCode);
-        this.crawler.queue(to);
+        this.crawler.queue({url : to});
 
     }
 }
@@ -253,7 +260,8 @@ Crawler.prototype.crawlHrefs = function(result, $) {
         timers.setImmediate(emitCrawlHrefEvent, self, "crawlLink", parentUri, linkUri, anchor, isDoFollow);
 
         if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri, anchor, isDoFollow)) {
-              self.crawler.queue(linkUri);
+
+              self.crawler.queue({url : linkUri});
         }
         else {
           timers.setImmediate(emitCrawlHrefEvent, self, "uncrawl", parentUri, linkUri, anchor, isDoFollow);
@@ -292,7 +300,7 @@ Crawler.prototype.crawlLinks = function(result, $) {
 
               if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
 
-                  self.crawler.queue(linkUri);
+                  self.crawler.queue({url : linkUri});
 
               }
               else {
@@ -328,7 +336,7 @@ Crawler.prototype.crawlScripts = function(result, $) {
 
         if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
 
-            self.crawler.queue(linkUri);
+            self.crawler.queue({url : linkUri});
 
         }
         else {
@@ -362,7 +370,7 @@ Crawler.prototype.crawlImages = function(result, $) {
         timers.setImmediate(emitCrawlImage, self, parentUri, linkUri, alt);
 
         if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
-            self.crawler.queue(linkUri);
+            self.crawler.queue({url : linkUri});
 
         }
         else {
