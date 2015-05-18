@@ -327,7 +327,7 @@ Rough todolist
 
  * More & more plugins (in progress)
  * Use Riak as default persistence layer/Crawler Store
- * Multicore architecture - Use RabbitMQ for bigger crawl
+ * Multicore architecture and/or micro service architecture for plugins that requires a lot of CPU usage
  * CLI for extracting data from the Crawl Store
  * Build UI : dashboards, view project data, ...
 
@@ -350,5 +350,12 @@ ChangeLog
  - set the default userAgent to NinjaBot.
  - update README.
 
-0.1.3 
+0.1.3
  - avoid crash for long crawls.
+
+0.1.4
+ - code refactoring in order to make a tentative of multicore proccess for making http requests
+
+0.1.5
+  - remove the multicore support for making http requests due to the important overhead. Plan to use multicore for some intensive CPU plugins.
+  - refactor the rate limit and http request retries in case of errors.

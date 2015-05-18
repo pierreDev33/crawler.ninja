@@ -182,6 +182,30 @@ describe('Audit Plugin Basic tests', function() {
 
         });
 
+        /*
+        it('Should crawl even with timout with retries', function(done) {
+            this.timeout(20000);
+            var c = new crawler.Crawler({timeout: 50, retries : 3, retryTimeout : 1000});
+            var audit = new seoaudit.Plugin(c);
+            //var log = new logger.Plugin(c);
+
+            c.on("end", function(){
+
+                var resource = audit.resources.get("http://localhost:9999/timeout");
+
+                assert(resource.statusCode==408);
+                assert(audit.outLinks.get("http://localhost:9999/page4.html")[0].page == "http://localhost:9999/timeout");
+                assert(audit.outLinks.get("http://localhost:9999/page4.html")[1].page == "http://localhost:9999/");
+                assert(audit.inLinks.get("http://localhost:9999/timeout")[0].page == "http://localhost:9999/page4.html");
+
+                done();
+
+            });
+
+            c.queue({url : "http://localhost:9999/page4.html"});
+
+        });
+        */
 
         it('Should crawl even with dns error', function(done) {
 
@@ -207,6 +231,27 @@ describe('Audit Plugin Basic tests', function() {
             c.queue({url : "http://localhost:9999/page5.html"});
 
         });
+
+        /*
+        it('Should crawl with a rate limit ', function(done) {
+
+            this.timeout(20000);
+            var c = new crawler.Crawler({rateLimits:500});
+            var audit = new seoaudit.Plugin(c);
+            var log = new logger.Plugin(c);
+
+            c.on("end", function() {
+
+                assert(audit.resources.keys().length == 16);
+                done();
+
+            });
+
+            c.queue({url : "http://localhost:9991/index.html"});
+
+        });
+        */
+
 
 
 

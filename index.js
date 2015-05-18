@@ -29,10 +29,8 @@ var DEFAULT_LINKS_TYPES = ["canonical", "stylesheet"];
 
 var DEFAULT_USER_AGENT = "NinjaBot";
 var DEFAULT_DEBUG = false;
-var DEFAULT_MULTICORES = false;
-var DEFAULT_NUMBER_OF_CORES = require('os').cpus().length;
 var DEFAULT_CACHE = false;
-var DEFAULT_FORCE_UTF8 = false;
+var DEFAULT_FORCE_UTF8 = true;
 var DEFAULT_INCOMING_ENCODING = null;
 var DEFAULT_METHOD = 'GET';
 var DEFAULT_REFERER = false;
@@ -62,13 +60,13 @@ var DEFAULT_REFERER = false;
  *  - proxyList          : the list of proxies (see the project simple-proxies on npm)
  *  + all params provided by nodejs request : https://github.com/request/request
  */
-function Crawler(config) {
+function Crawler(config) {    var self = this;
 
-    var self = this;
+
     // Store the depth for each crawled url
     // Override config.updateDepth function in order to use another storage
     // This default implementation is not recommanded for big crawl
-    // TODO : use an external store for the following collections
+    // TODO : use an external store
     this.depthUrls = new Map();
 
     // list of the hosts from which the crawl starts
@@ -82,6 +80,11 @@ function Crawler(config) {
       _.extend(this.config, config);
     }
 
+    // if using rateLimits we want to use only one connection with delay in between requests
+    if (this.config.rateLimits !== 0) {
+        this.config.maxConnections = 1;
+    }
+
 
     // assign the default updateDepth method used to calculate the crawl depth
     this.updateDepth = updateDepth;
@@ -91,7 +94,7 @@ function Crawler(config) {
       this.updateDepth = this.config.updateDepth;
     }
 
-    this.crawler = new requester.Requester(this.config);
+    this.httpRequester = new requester.Requester(this.config);
 
     events.EventEmitter.call(this);
 
@@ -109,7 +112,7 @@ util.inherits(Crawler, events.EventEmitter);
 Crawler.prototype.queue = function(urlInfo) {
 
     this.startFromHosts.add(URI.host(urlInfo.url));
-    this.crawler.queue(urlInfo);
+    this.httpRequester.queue(urlInfo);
 
 }
 
@@ -128,8 +131,6 @@ Crawler.prototype.createDefaultConfig = function() {
     incomingEncoding: DEFAULT_INCOMING_ENCODING, //TODO remove or optimize
     method          : DEFAULT_METHOD,
     referer         : DEFAULT_REFERER,
-    multiCores      : DEFAULT_MULTICORES,
-    numberOfCores   : DEFAULT_NUMBER_OF_CORES,
     maxConnections  : DEFAULT_NUMBER_OF_CONNECTIONS,
     timeout         : DEFAULT_TIME_OUT,
     retries         : DEFAULT_RETRIES,
@@ -200,7 +201,7 @@ Crawler.prototype.crawl = function (error, result) {
         var to = result.headers["location"];
         var to = URI.linkToURI(from, to);
         timers.setImmediate(emitRedirectEvent, self, from, to, result.statusCode);
-        this.crawler.queue({url : to});
+        this.httpRequester.queue({url : to});
 
     }
 }
@@ -261,7 +262,7 @@ Crawler.prototype.crawlHrefs = function(result, $) {
 
         if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri, anchor, isDoFollow)) {
 
-              self.crawler.queue({url : linkUri});
+              self.httpRequester.queue({url : linkUri});
         }
         else {
           timers.setImmediate(emitCrawlHrefEvent, self, "uncrawl", parentUri, linkUri, anchor, isDoFollow);
@@ -300,7 +301,7 @@ Crawler.prototype.crawlLinks = function(result, $) {
 
               if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
 
-                  self.crawler.queue({url : linkUri});
+                  self.httpRequester.queue({url : linkUri});
 
               }
               else {
@@ -336,7 +337,7 @@ Crawler.prototype.crawlScripts = function(result, $) {
 
         if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
 
-            self.crawler.queue({url : linkUri});
+            self.httpRequester.queue({url : linkUri});
 
         }
         else {
@@ -370,7 +371,7 @@ Crawler.prototype.crawlImages = function(result, $) {
         timers.setImmediate(emitCrawlImage, self, parentUri, linkUri, alt);
 
         if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
-            self.crawler.queue({url : linkUri});
+            self.httpRequester.queue({url : linkUri});
 
         }
         else {
