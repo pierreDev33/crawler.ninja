@@ -2,7 +2,7 @@ Crawler Ninja
 -------------
 
 This crawler aims to help SEO to build custom solutions for crawling/scraping sites.
-For example, it can help to audit a site, find expired domains, build corpus, find netlinking spots, retrieve site ranking, check if web pages are correctly indexed, ...
+For example, it can help to audit a site, find expired domains, build corpus, scrap texts, find netlinking spots, retrieve site ranking, check if web pages are correctly indexed, ...
 
 This is just a matter of plugins ! :-) We plan to build generic & simple plugins but you are free to create your owns.
 
@@ -298,19 +298,37 @@ function crawl(proxyList){
 Using the crawl logger in your own plugin
 ------------------------------------------
 
-The current crawl logger is based on [bunyan](https://github.com/trentm/node-bunyan).
-it logs the main crawl actions in the file : ./logs/crawler.log
+The current crawl logger is based on [winston](https://github.com/winstonjs/winston).
+- It logs the all crawl actions & errors in the file ./logs/crawler.log.
+- The list of crawled urls are in the file ./logs/urls.log.
+- The list of errors can be found in ./logs/errors.log.
 
-You can use it in your own Plugin by using the following code.
+
+You can use the current logger or create a new one in your own Plugin
+
+*Use default loggers*
+
 
 ```javascript
-var log = require("crawler-ninja/lib/logger.js").Logger;
 
-log.info("log info");
-log.debug("log debug");
-log.error("log error");  
+var log = require("../lib/logger.js").Logger;
+
+log.info("log info");  // Log into crawler.log
+log.debug("log debug"); // Log into crawler.log
+log.error("log error"); // Log into crawler.log & errors.log
 
 ```
+
+*Create a new logger for your plugin*
+
+```javascript
+// Log into crawler.log
+var log = require("../lib/logger.js");
+
+var myLog = log.createLogger("myLoggerName", "./logs/myplugin.log", true); //true = json output
+
+```
+
 More features & flexibilities will be added in the upcoming releases.
 
 
@@ -359,3 +377,6 @@ ChangeLog
 0.1.5
   - remove the multicore support for making http requests due to the important overhead. Plan to use multicore for some intensive CPU plugins.
   - refactor the rate limit and http request retries in case of errors.
+
+0.1.6
+ - Review logger : use winston, different log files : the full crawl, errors and urls. Gives the possibility to create a specific logger for a plugin.

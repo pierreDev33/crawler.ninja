@@ -140,7 +140,7 @@ describe('Audit Plugin Basic tests', function() {
 
             var c = new crawler.Crawler();
             var audit = new seoaudit.Plugin(c);
-            //var log = new logger.Plugin(c);
+            var log = new logger.Plugin(c);
 
             c.on("end", function(){
 
@@ -163,7 +163,7 @@ describe('Audit Plugin Basic tests', function() {
 
             var c = new crawler.Crawler({timeout: 50});
             var audit = new seoaudit.Plugin(c);
-            //var log = new logger.Plugin(c);
+            var log = new logger.Plugin(c);
 
             c.on("end", function(){
 

@@ -16,7 +16,7 @@ describe('Audit Plugin', function() {
 
             var c = new crawler.Crawler();
             var audit = new seoaudit.Plugin(c);
-            //var log = new logger.Plugin(c);
+            var log = new logger.Plugin(c);
 
             c.on("end", function() {
 
