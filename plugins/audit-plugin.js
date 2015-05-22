@@ -33,6 +33,7 @@ function Plugin(crawler) {
     var self = this;
 
     this.crawler.on("error", function(error, result){
+
         
         self.errors.add({uri : result.uri, error : error});
         if (error.code == ERROR_CODE_TIMEOUT) {

@@ -98,10 +98,10 @@ describe('Audit Plugin Basic tests', function() {
 
             var c = new crawler.Crawler();
             var audit = new seoaudit.Plugin(c);
-            //var log = new logger.Plugin(c);
+            var log = new logger.Plugin(c);
 
             c.on("end", function(){
-
+                //console.log(audit.resources.keys());
                 var resource = audit.resources.get("http://localhost:9999/200x200-image.jpg");
                 assert(resource.contentType =='image/jpeg');
 
@@ -160,8 +160,32 @@ describe('Audit Plugin Basic tests', function() {
 
 
         it('Should crawl even with timout', function(done) {
-
+          this.timeout(3000);
             var c = new crawler.Crawler({timeout: 50});
+            var audit = new seoaudit.Plugin(c);
+            var log = new logger.Plugin(c);
+
+            c.on("end", function(){
+
+                var resource = audit.resources.get("http://localhost:9999/timeout");
+                //console.log(audit.resources.get("http://localhost:9999/timeout"));
+                assert(resource.statusCode==408);
+                assert(audit.outLinks.get("http://localhost:9999/page4.html")[0].page == "http://localhost:9999/timeout");
+                assert(audit.outLinks.get("http://localhost:9999/page4.html")[1].page == "http://localhost:9999/");
+                assert(audit.inLinks.get("http://localhost:9999/timeout")[0].page == "http://localhost:9999/page4.html");
+
+                done();
+
+            });
+
+            c.queue({url : "http://localhost:9999/page4.html"});
+
+        });
+
+
+        it('Should crawl even with timout with retries', function(done) {
+            this.timeout(20000);
+            var c = new crawler.Crawler({timeout: 50, retries : 3, retryTimeout : 1000});
             var audit = new seoaudit.Plugin(c);
             var log = new logger.Plugin(c);
 
@@ -182,30 +206,6 @@ describe('Audit Plugin Basic tests', function() {
 
         });
 
-        /*
-        it('Should crawl even with timout with retries', function(done) {
-            this.timeout(20000);
-            var c = new crawler.Crawler({timeout: 50, retries : 3, retryTimeout : 1000});
-            var audit = new seoaudit.Plugin(c);
-            //var log = new logger.Plugin(c);
-
-            c.on("end", function(){
-
-                var resource = audit.resources.get("http://localhost:9999/timeout");
-
-                assert(resource.statusCode==408);
-                assert(audit.outLinks.get("http://localhost:9999/page4.html")[0].page == "http://localhost:9999/timeout");
-                assert(audit.outLinks.get("http://localhost:9999/page4.html")[1].page == "http://localhost:9999/");
-                assert(audit.inLinks.get("http://localhost:9999/timeout")[0].page == "http://localhost:9999/page4.html");
-
-                done();
-
-            });
-
-            c.queue({url : "http://localhost:9999/page4.html"});
-
-        });
-        */
 
         it('Should crawl even with dns error', function(done) {
 

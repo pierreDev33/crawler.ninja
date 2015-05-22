@@ -80,7 +80,7 @@ function Crawler(config) {    var self = this;
       _.extend(this.config, config);
     }
 
-    // if using rateLimits we want to use only one connection with delay in between requests
+    // if using rateLimits we want to use only one connection with delay between requests
     if (this.config.rateLimits !== 0) {
         this.config.maxConnections = 1;
     }
@@ -104,15 +104,60 @@ util.inherits(Crawler, events.EventEmitter);
 
 
 /**
- * Add an url to crawl
+ * Add one or more urls to crawl
  *
  * @param The url to crawl
  *
  */
-Crawler.prototype.queue = function(urlInfo) {
+Crawler.prototype.queue = function(options) {
 
-    this.startFromHosts.add(URI.host(urlInfo.url));
-    this.httpRequester.queue(urlInfo);
+    var self = this;
+
+    if (! options)  {
+        if (self.config.callback) {
+            self.config.callback({errorCode : "NO_OPTIONS"}, {method:"GET", url : "unknown", proxy : "", error : true});
+        }
+
+        if (this.httpRequester.idle()) {
+          self.config.onDrain();
+        }
+        return;
+    }
+
+
+    // if Array => recall this method for each element
+    if (_.isArray(options)) {
+        options.forEach(function(opt){
+            self.queue(opt);
+        });
+
+        return;
+    }
+
+
+    // if String, we expect to receive an url
+    if (_.isString(options)) {
+      this.startFromHosts.add(URI.host(options));
+      this.httpRequester.queue({uri:options, url:options})
+    }
+    // Last possibility, this is a json
+    else {
+
+      if (! _.has(options, "url") && ! _.has(options, "uri")) {
+        if (self.config.callback) {
+            self.config.callback({errorCode : "NO_URL_OPTION"}, {method:"GET", url : "unknown", proxy : "", error : true});
+        }
+
+        if (this.httpRequester.idle()) {
+          self.config.onDrain();
+        }
+      }
+      else {
+        this.startFromHosts.add(URI.host(_.has(options, "url") ? options.url : options.uri));
+        this.httpRequester.queue(options);
+      }
+    }
+
 
 }
 
@@ -158,6 +203,10 @@ Crawler.prototype.createDefaultConfig = function() {
         timers.setImmediate(function(){
             self.emit('end');
         });
+
+      },
+
+      onConfigError : function() {
 
       }
 
@@ -216,6 +265,7 @@ Crawler.prototype.crawl = function (error, result) {
  */
 Crawler.prototype.analyzeHTML = function(result, $) {
 
+
     this.crawlHrefs(result, $);
 
     if (this.config.links){
@@ -261,8 +311,7 @@ Crawler.prototype.crawlHrefs = function(result, $) {
         timers.setImmediate(emitCrawlHrefEvent, self, "crawlLink", parentUri, linkUri, anchor, isDoFollow);
 
         if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri, anchor, isDoFollow)) {
-
-              self.httpRequester.queue({url : linkUri});
+          self.httpRequester.queue({url : linkUri});
         }
         else {
           timers.setImmediate(emitCrawlHrefEvent, self, "uncrawl", parentUri, linkUri, anchor, isDoFollow);
@@ -301,7 +350,7 @@ Crawler.prototype.crawlLinks = function(result, $) {
 
               if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
 
-                  self.httpRequester.queue({url : linkUri});
+                self.httpRequester.queue({url : linkUri});
 
               }
               else {
@@ -337,7 +386,7 @@ Crawler.prototype.crawlScripts = function(result, $) {
 
         if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
 
-            self.httpRequester.queue({url : linkUri});
+          self.httpRequester.queue({url : linkUri});
 
         }
         else {
@@ -366,12 +415,14 @@ Crawler.prototype.crawlImages = function(result, $) {
       var alt = $(img).attr('alt');
       if (link) {
         var linkUri = URI.linkToURI(parentUri, link);
+
         var currentDepth = self.updateDepth(parentUri, linkUri);
 
         timers.setImmediate(emitCrawlImage, self, parentUri, linkUri, alt);
 
         if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
-            self.httpRequester.queue({url : linkUri});
+
+          self.httpRequester.queue({url : linkUri});
 
         }
         else {
@@ -456,6 +507,7 @@ var updateDepth = function(parentUri, linkUri) {
 }
 
 function emitCrawlEvent(crawler, result, $) {
+
   crawler.emit("crawl", result, $);
 }
 
@@ -481,6 +533,7 @@ function emitUnCrawlEvent(crawler, parentUri, linkUri ) {
 }
 
 function emitCrawlImage(crawler, parentUri, linkUri, alt ) {
+
   crawler.emit("crawlImage", parentUri, linkUri, alt);
 }
 

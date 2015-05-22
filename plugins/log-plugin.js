@@ -3,7 +3,6 @@
  *
  */
 var log = require("../lib/logger.js").Logger;
-var urlLog = require("../lib/logger.js").UrlLogger;
 
 function Plugin(crawler) {
    this.crawler = crawler;
@@ -12,16 +11,29 @@ function Plugin(crawler) {
    var self = this;
 
    this.crawler.on("crawl", function(result, $) {
-      log.info(result.statusCode + " - " + result.method +" - " +
-                       result.uri + ' - response time : ' + result.responseTime + "ms" +
-                       (result.proxy ? " - proxy : " + result.proxy : ""));
-      urlLog.info(result.uri);
+      var data = {
+          statusCode    : result.statusCode,
+          method        : result.method,
+          url           : result.uri,
+          responseTime  : result.responseTime,
+          proxy         : (result.proxy ? result.proxy : ""),
+          error         : false
+      }
+      log.info(data);
+
    });
 
    this.crawler.on("error", function(error, result) {
-       log.error(error.code + " - " + result.method +" - " + result.uri +
-                        (result.proxy ? " - proxy : " + result.proxy : ""));
-       urlLog.info(result.uri + " (error)");
+
+     var data = {
+       errorCode     : error.code,
+       method        : result.method,
+       url           : result.uri,
+       proxy         : (result.proxy ? result.proxy : ""),
+       error         : true
+     }
+     
+     log.error(data);
 
    });
 

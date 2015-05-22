@@ -298,36 +298,40 @@ function crawl(proxyList){
 Using the crawl logger in your own plugin
 ------------------------------------------
 
-The current crawl logger is based on [winston](https://github.com/winstonjs/winston).
+The current crawl logger is based on [Bunyan](https://github.com/trentm/node-bunyan).
 - It logs the all crawl actions & errors in the file ./logs/crawler.log.
-- The list of crawled urls are in the file ./logs/urls.log.
 - The list of errors can be found in ./logs/errors.log.
 
+You can query the log file after the crawl (see the Bunyan doc for more informations) in order to filter errors or other info.
 
-You can use the current logger or create a new one in your own Plugin
+You can also use the current logger or create a new one in your own Plugin.
 
 *Use default loggers*
 
 
 ```javascript
 
-var log = require("../lib/logger.js").Logger;
+var log = require("crawler-ninja./lib/logger.js").Logger;
 
 log.info("log info");  // Log into crawler.log
 log.debug("log debug"); // Log into crawler.log
 log.error("log error"); // Log into crawler.log & errors.log
-
+log.info({statusCode : 200, url: "http://www.google.com" }) // log a json
 ```
 
 *Create a new logger for your plugin*
 
 ```javascript
 // Log into crawler.log
-var log = require("../lib/logger.js");
+var log = require("crawler-ninja/lib/logger.js");
 
-var myLog = log.createLogger("myLoggerName", "./logs/myplugin.log", true); //true = json output
+var myLog = log.createLogger("myLoggerName", "./logs/myplugin.log");
+
+myLog.log({url:"http://www.google.com", pageRank : 10});
 
 ```
+
+Please, feel free to read the code in log-plugin to get more info on how to log from you own plugin.  
 
 More features & flexibilities will be added in the upcoming releases.
 
@@ -380,3 +384,8 @@ ChangeLog
 
 0.1.6
  - Review logger : use winston, different log files : the full crawl, errors and urls. Gives the possibility to create a specific logger for a plugin.
+
+0.1.7 (in progress)
+  - Too many issues with winston, use Bunyan for the logs
+  - Refactor how to set the crawl options : simple url, an array of urls or of json option objects.
+  - Review the doc aka README

@@ -1,4 +1,3 @@
-
 var assert    = require("assert");
 var _         = require("underscore");
 var seoaudit  = require("../plugins/audit-plugin.js");
