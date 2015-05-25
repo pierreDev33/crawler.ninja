@@ -20,6 +20,7 @@ function Plugin(crawler) {
           error         : false
       }
       log.info(data);
+      
 
    });
 
@@ -32,7 +33,7 @@ function Plugin(crawler) {
        proxy         : (result.proxy ? result.proxy : ""),
        error         : true
      }
-     
+
      log.error(data);
 
    });

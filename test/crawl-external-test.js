@@ -31,7 +31,7 @@ describe('External Links', function() {
 
 
         it('Should crawl external links but not entire domains', function(done) {
-
+          this.timeout(3000);
             var c = new crawler.Crawler({externalLinks : true});
             var audit = new seoaudit.Plugin(c);
             //var log = new logger.Plugin(c);

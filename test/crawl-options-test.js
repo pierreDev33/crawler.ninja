@@ -1,7 +1,7 @@
 var assert    = require("assert");
 var crawler   = require("../index.js");
 var audit     = require("../plugins/audit-plugin.js");
-//var logger    = require("../plugins/log-plugin.js");
+var logger    = require("../plugins/log-plugin.js");
 
 var testSite  = require("./website/start.js").site;
 
@@ -92,6 +92,36 @@ describe('Crawl Option tests', function() {
             });
 
             c.queue(["http://localhost:9999/", {url:"http://localhost:9999/page6.html"}]);
+
+        });
+
+
+        it('Should use the custom options for all upcoming requests', function(done) {
+
+            var c = new crawler.Crawler();
+            var a = new audit.Plugin(c);
+            var l = new logger.Plugin(c);
+
+            var ok = false;
+
+            c.on("end", function(){
+
+                assert(ok);
+                done();
+
+            });
+
+            c.queue({uri :"http://localhost:9999/page7.html",
+                     userAgent : "dummyBot",
+                     canCrawl : function (parentUri, link, anchor, isDoFollow){
+                                    if (link == "http://localhost:9999/page9.html") {
+                                      ok = true;
+                                    }
+                                    return true;
+                                }
+
+                     });
+
 
         });
 

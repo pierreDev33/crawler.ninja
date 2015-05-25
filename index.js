@@ -60,7 +60,7 @@ var DEFAULT_REFERER = false;
  *  - proxyList          : the list of proxies (see the project simple-proxies on npm)
  *  + all params provided by nodejs request : https://github.com/request/request
  */
-function Crawler(config) {    var self = this;
+function Crawler(config) {
 
 
     // Store the depth for each crawled url
@@ -113,9 +113,10 @@ Crawler.prototype.queue = function(options) {
 
     var self = this;
 
+    // Error if no options
     if (! options)  {
-        if (self.config.callback) {
-            self.config.callback({errorCode : "NO_OPTIONS"}, {method:"GET", url : "unknown", proxy : "", error : true});
+        if (self.config.onCrawl) {
+            self.config.onCrawl({errorCode : "NO_OPTIONS"}, {method:"GET", url : "unknown", proxy : "", error : true});
         }
 
         if (this.httpRequester.idle()) {
@@ -138,14 +139,15 @@ Crawler.prototype.queue = function(options) {
     // if String, we expect to receive an url
     if (_.isString(options)) {
       this.startFromHosts.add(URI.host(options));
-      this.httpRequester.queue({uri:options, url:options})
+
+      this.httpRequester.queue(this.addDefaultOptions({uri:options, url:options}, this.config))
     }
     // Last possibility, this is a json
     else {
 
       if (! _.has(options, "url") && ! _.has(options, "uri")) {
-        if (self.config.callback) {
-            self.config.callback({errorCode : "NO_URL_OPTION"}, {method:"GET", url : "unknown", proxy : "", error : true});
+        if (self.config.onCrawl) {
+            self.config.onCrawl({errorCode : "NO_URL_OPTION"}, {method:"GET", url : "unknown", proxy : "", error : true});
         }
 
         if (this.httpRequester.idle()) {
@@ -154,48 +156,71 @@ Crawler.prototype.queue = function(options) {
       }
       else {
         this.startFromHosts.add(URI.host(_.has(options, "url") ? options.url : options.uri));
-        this.httpRequester.queue(options);
+        this.httpRequester.queue(this.addDefaultOptions(options, this.config));
       }
     }
 
 
 }
 
+Crawler.prototype.addDefaultOptions = function(options, defaultOptions) {
+
+    _.defaults(options, defaultOptions);
+    return options;
+
+}
+
+Crawler.prototype.buildNewOptions = function(options, newUrl) {
+
+    var o = this.createDefaultConfig(newUrl);
+
+    // Copy only options attributes that are in the options used for the previous request
+    // Could be simple ? ;-)
+    o =  _.extend(o, _.pick(options, _.without(_.keys(o), "url", "uri") ));
+
+    if (options.canCrawl) {
+      o.canCrawl = options.canCrawl;
+    }
+    return o;
+
+}
+
+
 /**
  * Default crawler config
  *
  * @returns the config object
  */
-Crawler.prototype.createDefaultConfig = function() {
+Crawler.prototype.createDefaultConfig = function(url) {
   var self = this;
-  return {
+  var config = {
 
 
-    cache           : DEFAULT_CACHE,
-    forceUTF8       : DEFAULT_FORCE_UTF8,
-    incomingEncoding: DEFAULT_INCOMING_ENCODING, //TODO remove or optimize
-    method          : DEFAULT_METHOD,
-    referer         : DEFAULT_REFERER,
-    maxConnections  : DEFAULT_NUMBER_OF_CONNECTIONS,
-    timeout         : DEFAULT_TIME_OUT,
-    retries         : DEFAULT_RETRIES,
-    retryTimeout    : DEFAULT_RETRY_TIMEOUT,
-    skipDuplicates  : DEFAULT_SKIP_DUPLICATES,
-    rateLimits      : DEFAULT_RATE_LIMITS,
-    externalLinks   : DEFAULT_CRAWL_EXTERNAL_LINKS,
-    externalDomains : DEFAULT_CRAWL_EXTERNAL_DOMAINS,
-    protocols       : DEFAULT_PROTOCOLS_TO_CRAWL,
-    depthLimit      : DEFAULT_DEPTH_LIMIT,
-    followRedirect  : DEFAULT_FOLLOW_301,
-    debug           : DEFAULT_DEDUG,
-    images          : DEFAULT_CRAWL_IMAGES,
-    links           : DEFAULT_CRAWL_LINKS,
-    linkTypes       : DEFAULT_LINKS_TYPES,
-    scripts         : DEFAULT_CRAWL_SCRIPTS,
-    userAgent       : DEFAULT_USER_AGENT,
-    debug           : DEFAULT_DEBUG,
+      cache           : DEFAULT_CACHE,
+      forceUTF8       : DEFAULT_FORCE_UTF8,
+      incomingEncoding: DEFAULT_INCOMING_ENCODING, //TODO remove or optimize
+      method          : DEFAULT_METHOD,
+      referer         : DEFAULT_REFERER,
+      maxConnections  : DEFAULT_NUMBER_OF_CONNECTIONS,
+      timeout         : DEFAULT_TIME_OUT,
+      retries         : DEFAULT_RETRIES,
+      retryTimeout    : DEFAULT_RETRY_TIMEOUT,
+      skipDuplicates  : DEFAULT_SKIP_DUPLICATES,
+      rateLimits      : DEFAULT_RATE_LIMITS,
+      externalLinks   : DEFAULT_CRAWL_EXTERNAL_LINKS,
+      externalDomains : DEFAULT_CRAWL_EXTERNAL_DOMAINS,
+      protocols       : DEFAULT_PROTOCOLS_TO_CRAWL,
+      depthLimit      : DEFAULT_DEPTH_LIMIT,
+      followRedirect  : DEFAULT_FOLLOW_301,
+      debug           : DEFAULT_DEDUG,
+      images          : DEFAULT_CRAWL_IMAGES,
+      links           : DEFAULT_CRAWL_LINKS,
+      linkTypes       : DEFAULT_LINKS_TYPES,
+      scripts         : DEFAULT_CRAWL_SCRIPTS,
+      userAgent       : DEFAULT_USER_AGENT,
+      debug           : DEFAULT_DEBUG,
 
-    callback : function(error, result){
+      onCrawl : function(error, result){
         self.crawl(error, result);
       },
 
@@ -204,18 +229,20 @@ Crawler.prototype.createDefaultConfig = function() {
             self.emit('end');
         });
 
-      },
-
-      onConfigError : function() {
-
       }
 
-
   };
+  if (url) {
+    config.url = url;
+    config.uri = url;
+  }
+
+  return config;
+
 }
 
 /**
- * Callback method used when the crawler crawl a resource (html, pdf, css, ...)
+ * Default callback method used when the http queue requester get a resource (html, pdf, css, ...)
  *
  * @param error The usual nodejs error
  * @param result : the result of the resource crawl
@@ -223,6 +250,7 @@ Crawler.prototype.createDefaultConfig = function() {
  *        is not an HTML
  */
 Crawler.prototype.crawl = function (error, result) {
+
 
     var self = this;
     if (error) {
@@ -235,8 +263,7 @@ Crawler.prototype.crawl = function (error, result) {
 
     timers.setImmediate(emitCrawlEvent, self,result, $);
 
-    // if $ is defined, this is an HTML page with an http status 200, crawl the linked resources
-    // Other resources can be managed by a plugin (a listener to the event "crawl")
+    // if $ is defined, this is an HTML page with an http status 200
     if ($) {
 
       this.analyzeHTML(result,$);
@@ -250,10 +277,12 @@ Crawler.prototype.crawl = function (error, result) {
         var to = result.headers["location"];
         var to = URI.linkToURI(from, to);
         timers.setImmediate(emitRedirectEvent, self, from, to, result.statusCode);
-        this.httpRequester.queue({url : to});
+
+        this.httpRequester.queue(this.buildNewOptions(result,to));
 
     }
 }
+
 
 
 /**
@@ -298,6 +327,7 @@ Crawler.prototype.crawlHrefs = function(result, $) {
   $('a').each(function(index, a) {
 
       var link = $(a).attr('href');
+
       if (link) {
 
         var anchor = $(a).text() ? $(a).text() : "";
@@ -310,8 +340,9 @@ Crawler.prototype.crawlHrefs = function(result, $) {
 
         timers.setImmediate(emitCrawlHrefEvent, self, "crawlLink", parentUri, linkUri, anchor, isDoFollow);
 
-        if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri, anchor, isDoFollow)) {
-          self.httpRequester.queue({url : linkUri});
+
+        if (self.isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri, anchor, isDoFollow)) {
+          self.httpRequester.queue(self.buildNewOptions(result,linkUri));
         }
         else {
           timers.setImmediate(emitCrawlHrefEvent, self, "uncrawl", parentUri, linkUri, anchor, isDoFollow);
@@ -348,9 +379,9 @@ Crawler.prototype.crawlLinks = function(result, $) {
 
               timers.setImmediate(emitCrawlLinkEvent, self, parentUri, linkUri);
 
-              if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
+              if (self.isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri)) {
 
-                self.httpRequester.queue({url : linkUri});
+                self.httpRequester.queue(self.buildNewOptions(result,linkUri));
 
               }
               else {
@@ -384,9 +415,9 @@ Crawler.prototype.crawlScripts = function(result, $) {
 
         timers.setImmediate(emitCrawlLinkEvent, self, parentUri, linkUri);
 
-        if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
+        if (self.isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri)) {
 
-          self.httpRequester.queue({url : linkUri});
+          self.httpRequester.queue(self.buildNewOptions(result, linkUri));
 
         }
         else {
@@ -420,9 +451,9 @@ Crawler.prototype.crawlImages = function(result, $) {
 
         timers.setImmediate(emitCrawlImage, self, parentUri, linkUri, alt);
 
-        if (self.isAGoodLinkToCrawl(currentDepth, parentUri, linkUri)) {
+        if (self.isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri)) {
 
-          self.httpRequester.queue({url : linkUri});
+          self.httpRequester.queue(self.buildNewOptions(result,linkUri));
 
         }
         else {
@@ -442,36 +473,38 @@ Crawler.prototype.crawlImages = function(result, $) {
  * @param true if the link is dofollow
  * @returns
  */
-Crawler.prototype.isAGoodLinkToCrawl = function(currentDepth, parentUri, link, anchor, isDoFollow) {
+Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri, link, anchor, isDoFollow) {
+
 
   // 1. Check the depthLimit
-  if (this.config.depthLimit > -1 && currentDepth > this.config.depthLimit) {
+  if (result.depthLimit > -1 && currentDepth > result.depthLimit) {
     return false
   }
 
   // 2. Check if we need to crawl external links
-  if (URI.isExternalLink(parentUri,link) &&  ! this.config.externalLinks) {
+  if (URI.isExternalLink(parentUri,link) &&  ! result.externalLinks) {
     return false;
   }
 
   // 3. Check if we need to crawl external domains
-  if (! this.startFromHosts.has(URI.host(parentUri)) && ! this.config.externalDomains) {
+  if (! this.startFromHosts.has(URI.host(parentUri)) && ! result.externalDomains) {
     return false;
   }
 
   // 4. Check if the link is based on a good protocol
-  if (this.config.protocols.indexOf(URI.protocol(link)) < 0) {
+  if (result.protocols.indexOf(URI.protocol(link)) < 0) {
     return false;
   }
 
 
   // 5. Check if there is a rule in the crawler configuration
-  if (! this.config.canCrawl) {
+  if (! result.canCrawl) {
     return true;
   }
 
-  return this.config.canCrawl(parentUri, link, anchor, isDoFollow);
-
+  var check =  result.canCrawl(parentUri, link, anchor, isDoFollow);
+  //console.log(parentUri + " - " + link + " : " + check);
+  return check;
 }
 
 /**

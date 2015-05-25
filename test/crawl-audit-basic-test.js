@@ -160,7 +160,7 @@ describe('Audit Plugin Basic tests', function() {
 
 
         it('Should crawl even with timout', function(done) {
-          this.timeout(3000);
+          this.timeout(5000);
             var c = new crawler.Crawler({timeout: 50});
             var audit = new seoaudit.Plugin(c);
             var log = new logger.Plugin(c);
@@ -184,7 +184,7 @@ describe('Audit Plugin Basic tests', function() {
 
 
         it('Should crawl even with timout with retries', function(done) {
-            this.timeout(20000);
+            this.timeout(3000);
             var c = new crawler.Crawler({timeout: 50, retries : 3, retryTimeout : 1000});
             var audit = new seoaudit.Plugin(c);
             var log = new logger.Plugin(c);
