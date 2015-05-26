@@ -475,7 +475,6 @@ Crawler.prototype.crawlImages = function(result, $) {
  */
 Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri, link, anchor, isDoFollow) {
 
-
   // 1. Check the depthLimit
   if (result.depthLimit > -1 && currentDepth > result.depthLimit) {
     return false

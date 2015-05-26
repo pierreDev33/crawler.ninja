@@ -1,5 +1,5 @@
 /**
- * This is a simple plugin which log on the console the crawled urls
+ * This is a simple plugin which log the crawled urls
  *
  */
 var log = require("../lib/logger.js").Logger;
@@ -20,7 +20,7 @@ function Plugin(crawler) {
           error         : false
       }
       log.info(data);
-      
+
 
    });
 
