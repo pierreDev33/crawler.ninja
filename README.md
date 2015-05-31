@@ -387,5 +387,6 @@ ChangeLog
 
 0.1.7 (in progress)
   - Too many issues with winston, use Bunyan for the logs
-  - Refactor how to set the crawl options : simple url, an array of urls or of json option objects.
+  - Refactor how to set the urls in the crawl option : simple url, an array of urls or of json option objects.
   - Review the doc aka README
+  - Review how to manage the timeout in function of the site to crawl. If too many timeouts, the crawler will change the settings in order to decrease request concurrency.

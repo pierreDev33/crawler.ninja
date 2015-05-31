@@ -10,11 +10,13 @@ var html      = require("./lib/html.js");
 
 var DEFAULT_NUMBER_OF_CONNECTIONS = 10;
 var DEFAULT_DEPTH_LIMIT = -1; // no limit
-var DEFAULT_TIME_OUT = 8000;
+var DEFAULT_TIME_OUT = 20000;
 var DEFAULT_RETRIES = 0;
 var DEFAULT_RETRY_TIMEOUT = 10000;
 var DEFAULT_SKIP_DUPLICATES = true;
 var DEFAULT_RATE_LIMITS = 0;
+var DEFAULT_MAX_ERRORS = 10;
+
 var DEFAULT_CRAWL_EXTERNAL_LINKS = false;
 var DEFAULT_CRAWL_EXTERNAL_DOMAINS = false;
 var DEFAULT_CRAWL_SCRIPTS = true;   // Crawl <script>
@@ -23,7 +25,6 @@ var DEFAULT_CRAWL_IMAGES = true;
 
 var DEFAULT_PROTOCOLS_TO_CRAWL = ["http", "https"];
 var DEFAULT_FOLLOW_301 = false;
-var DEFAULT_DEDUG = false;
 
 var DEFAULT_LINKS_TYPES = ["canonical", "stylesheet"];
 
@@ -49,15 +50,17 @@ var DEFAULT_REFERER = false;
  *  - linkTypes          : the type of the links tags to crawl (match to the rel attribute), default : ["canonical", "stylesheet"]
  *  - images             : if true crawl images
  *  - protocols          : list of the protocols to crawl, default = ["http", "https"]
- *  - timeout            : timeout per requests in milliseconds (Default 8000)
- *  - retries            : number of retries if the request fails (default 0)
+ *  - timeout            : timeout per requests in milliseconds (Default 20000)
+ *  - retries            : number of retries if the request fails (default 3)
  *  - retryTimeout       : number of milliseconds to wait before retrying (Default 10000)
+ *  - maxErrors          : number of errors before changing the crawl configuration
  *  - skipDuplicates     : if true skips URIs that were already crawled - default is true
  *  - rateLimits         : number of milliseconds to delay between each requests (Default 0).
  *                         Note that this option will force crawler to use only one connection
  *  - depthLimit         : the depth limit for the crawl
  *  - followRedirect     : if true, the crawl will not return the 301, it will follow directly the redirection
  *  - proxyList          : the list of proxies (see the project simple-proxies on npm)
+ *
  *  + all params provided by nodejs request : https://github.com/request/request
  */
 function Crawler(config) {
@@ -166,6 +169,7 @@ Crawler.prototype.queue = function(options) {
 Crawler.prototype.addDefaultOptions = function(options, defaultOptions) {
 
     _.defaults(options, defaultOptions);
+    options.maxRetries = options.retries;
     return options;
 
 }
@@ -177,6 +181,10 @@ Crawler.prototype.buildNewOptions = function(options, newUrl) {
     // Copy only options attributes that are in the options used for the previous request
     // Could be simple ? ;-)
     o =  _.extend(o, _.pick(options, _.without(_.keys(o), "url", "uri") ));
+
+    //Reset setting used for retries when an error occurs like a timeout
+    o.maxRetries = o.retries;
+
 
     if (options.canCrawl) {
       o.canCrawl = options.canCrawl;
@@ -204,6 +212,7 @@ Crawler.prototype.createDefaultConfig = function(url) {
       maxConnections  : DEFAULT_NUMBER_OF_CONNECTIONS,
       timeout         : DEFAULT_TIME_OUT,
       retries         : DEFAULT_RETRIES,
+      maxRetries      : DEFAULT_RETRIES,
       retryTimeout    : DEFAULT_RETRY_TIMEOUT,
       skipDuplicates  : DEFAULT_SKIP_DUPLICATES,
       rateLimits      : DEFAULT_RATE_LIMITS,
@@ -212,13 +221,14 @@ Crawler.prototype.createDefaultConfig = function(url) {
       protocols       : DEFAULT_PROTOCOLS_TO_CRAWL,
       depthLimit      : DEFAULT_DEPTH_LIMIT,
       followRedirect  : DEFAULT_FOLLOW_301,
-      debug           : DEFAULT_DEDUG,
+      debug           : DEFAULT_DEBUG,
       images          : DEFAULT_CRAWL_IMAGES,
       links           : DEFAULT_CRAWL_LINKS,
       linkTypes       : DEFAULT_LINKS_TYPES,
       scripts         : DEFAULT_CRAWL_SCRIPTS,
       userAgent       : DEFAULT_USER_AGENT,
       debug           : DEFAULT_DEBUG,
+      maxErrors       : DEFAULT_MAX_ERRORS,
 
       onCrawl : function(error, result){
         self.crawl(error, result);
@@ -232,6 +242,7 @@ Crawler.prototype.createDefaultConfig = function(url) {
       }
 
   };
+
   if (url) {
     config.url = url;
     config.uri = url;
@@ -265,7 +276,6 @@ Crawler.prototype.crawl = function (error, result) {
 
     // if $ is defined, this is an HTML page with an http status 200
     if ($) {
-
       this.analyzeHTML(result,$);
     }
 

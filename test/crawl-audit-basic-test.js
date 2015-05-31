@@ -160,7 +160,7 @@ describe('Audit Plugin Basic tests', function() {
 
 
         it('Should crawl even with timout', function(done) {
-          this.timeout(5000);
+            this.timeout(5000);
             var c = new crawler.Crawler({timeout: 50});
             var audit = new seoaudit.Plugin(c);
             var log = new logger.Plugin(c);
@@ -182,10 +182,9 @@ describe('Audit Plugin Basic tests', function() {
 
         });
 
-
         it('Should crawl even with timout with retries', function(done) {
-            this.timeout(3000);
-            var c = new crawler.Crawler({timeout: 50, retries : 3, retryTimeout : 1000});
+            this.timeout(4000);
+            var c = new crawler.Crawler({timeout: 50, retries : 3, retryTimeout : 500});
             var audit = new seoaudit.Plugin(c);
             var log = new logger.Plugin(c);
 
@@ -206,6 +205,25 @@ describe('Audit Plugin Basic tests', function() {
 
         });
 
+        /*
+        it.only('Should decrease crawl rate if there are too many errors', function(done) {
+            this.timeout(60000);
+            var c = new crawler.Crawler({skipDuplicates : false, maxConnections: 2, timeout: 50, maxErrors : 3, retries : 2, retryTimeout:200});
+            var audit = new seoaudit.Plugin(c);
+            var log = new logger.Plugin(c);
+
+            c.on("end", function(){
+
+                console.log(audit.errors.toArray());
+
+                done();
+
+            });
+
+            c.queue({url : "http://localhost:9999/page11.html"});
+
+        });
+        */
 
         it('Should crawl even with dns error', function(done) {
 

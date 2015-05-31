@@ -39,6 +39,22 @@ site.get('/timeout', function(req, res) {
   }, 1500);
 });
 
+site.get('/timeout2', function(req, res) {
+  setTimeout(function(){
+    res.status(200).json({ message: 'This is a long process' });
+  }, 1500);
+});
+
+
+site.get('/timeout3', function(req, res) {
+  setTimeout(function(){
+    res.status(200).json({ message: 'This is a long process' });
+  }, 1500);
+});
+
+
+
+
 site.use(serveStatic(TEST_SITE_FOLDER));
 site.listen(9999);
 
