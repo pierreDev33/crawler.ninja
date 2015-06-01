@@ -14,17 +14,10 @@
     "cheerio": "0.18.0",
     "collections": "*",
     "crypto": "0.0.3",
-    "graceful-fs": "^3.0.6",
-    "iconv": "2.1.6",
-    "iconv-lite": "0.4.4",
-    "jschardet": "1.1.0",
     "request": "2.42.0",
     "riak-js": "^1.0.3",
     "simple-proxies": "^0.1.8",
     "underscore": "^1.8.2"
-  },
-  "optionalDependencies": {
-    "iconv": "*"
   },
   "devDependencies": {
     "mocha": "*",

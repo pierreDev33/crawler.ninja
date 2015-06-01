@@ -29,10 +29,7 @@ var DEFAULT_FOLLOW_301 = false;
 var DEFAULT_LINKS_TYPES = ["canonical", "stylesheet"];
 
 var DEFAULT_USER_AGENT = "NinjaBot";
-var DEFAULT_DEBUG = false;
 var DEFAULT_CACHE = false;
-var DEFAULT_FORCE_UTF8 = true;
-var DEFAULT_INCOMING_ENCODING = null;
 var DEFAULT_METHOD = 'GET';
 var DEFAULT_REFERER = false;
 
@@ -61,7 +58,7 @@ var DEFAULT_REFERER = false;
  *  - followRedirect     : if true, the crawl will not return the 301, it will follow directly the redirection
  *  - proxyList          : the list of proxies (see the project simple-proxies on npm)
  *
- *  + all params provided by nodejs request : https://github.com/request/request
+ *  + all options provided by nodejs request : https://github.com/request/request
  */
 function Crawler(config) {
 
@@ -205,8 +202,6 @@ Crawler.prototype.createDefaultConfig = function(url) {
 
 
       cache           : DEFAULT_CACHE,
-      forceUTF8       : DEFAULT_FORCE_UTF8,
-      incomingEncoding: DEFAULT_INCOMING_ENCODING, //TODO remove or optimize
       method          : DEFAULT_METHOD,
       referer         : DEFAULT_REFERER,
       maxConnections  : DEFAULT_NUMBER_OF_CONNECTIONS,
@@ -221,13 +216,11 @@ Crawler.prototype.createDefaultConfig = function(url) {
       protocols       : DEFAULT_PROTOCOLS_TO_CRAWL,
       depthLimit      : DEFAULT_DEPTH_LIMIT,
       followRedirect  : DEFAULT_FOLLOW_301,
-      debug           : DEFAULT_DEBUG,
       images          : DEFAULT_CRAWL_IMAGES,
       links           : DEFAULT_CRAWL_LINKS,
       linkTypes       : DEFAULT_LINKS_TYPES,
       scripts         : DEFAULT_CRAWL_SCRIPTS,
       userAgent       : DEFAULT_USER_AGENT,
-      debug           : DEFAULT_DEBUG,
       maxErrors       : DEFAULT_MAX_ERRORS,
 
       onCrawl : function(error, result){
@@ -253,7 +246,7 @@ Crawler.prototype.createDefaultConfig = function(url) {
 }
 
 /**
- * Default callback method used when the http queue requester get a resource (html, pdf, css, ...)
+ * Default callback function used when the http queue requester get a resource (html, pdf, css, ...)
  *
  * @param error The usual nodejs error
  * @param result : the result of the resource crawl

@@ -153,52 +153,24 @@ var c = new crawler.Crawler({
 - linkTypes          : the type of the links tags to crawl (match to the rel attribute), default = ["canonical", "stylesheet"].
 - images             : if true crawl images, default = true.
 - protocols          : list of the protocols to crawl, default = ["http", "https"].
-- timeout            : timeout per requests in milliseconds, default = 8000.
+- timeout            : timeout per requests in milliseconds, default = 20000.
 - retries            : number of retries if the request fails, default = 0.
 - retryTimeout       : number of milliseconds to wait before retrying,  default = 10000.
 - skipDuplicates     : if true skips URIs that were already crawled, default is true.
 - rateLimits         : number of milliseconds to delay between each requests , default = 0.
-                         Note that this option will force crawler to use only one connection
 - depthLimit         : the depth limit for the crawl, default is no limit.
 - followRedirect     : if true, the crawl will not return the 301, it will
  follow directly the redirection, default is false.
+- userAgent          : String, defaults to "node-crawler/[version]"
+- referer            : String, if truthy sets the HTTP referer header
 - proxyList          : The list of proxy to use for each crawler request (see below).
 
 
+You can also use the [mikeal's request options](https://github.com/mikeal/request#requestoptions-callback) and will be directly passed to the request() method.
 
-### Other options
 You can pass these options to the Crawler() constructor if you want them to be global or as
 items in the queue() calls if you want them to be specific to that item (overwriting global options)
 
-Pool options:
-
- * `priorityRange`: Number, Range of acceptable priorities starting from 0 (Default 10),
- * `priority`: Number, Priority of this request (Default 5),
-
-
-Server-side DOM options:
-
- * `jQuery`: true, false or ConfObject (Default true)
-   see below [Working with Cheerio or JSDOM](https://github.com/paulvalla/node-crawler/blob/master/README.md#working-with-cheerio-or-jsdom)
-
-Charset encoding:
-
- * `forceUTF8`: Boolean, if true will try to detect the page charset and convert it to UTF8 if necessary. Never worry about encoding anymore! (Default false),
- * `incomingEncoding`: String, with forceUTF8: true to set encoding manually (Default null)
-     `incomingEncoding : 'windows-1255'` for example
-
-Cache:
-
- * `cache`: Boolean, if true stores requests in memory (Default false)
-
-
-Other:
-
- * `userAgent`: String, defaults to "node-crawler/[version]"
- * `referer`: String, if truthy sets the HTTP referer header
- * `rateLimits`: Number of milliseconds to delay between each requests (Default 0) Note that this option will force crawler to use only one connection (for now)
-
-This options list is a strict superset of [mikeal's request options](https://github.com/mikeal/request#requestoptions-callback) and will be directly passed to the request() method.
 
 
 ### Add your own crawl rules
