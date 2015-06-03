@@ -23,6 +23,13 @@ function Plugin(crawler) {
 
    });
 
+
+   this.crawler.on("end", function() {
+
+     console.log("End of the crawl");
+
+   });
+
  }
 
 

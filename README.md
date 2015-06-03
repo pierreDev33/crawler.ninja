@@ -1,7 +1,7 @@
 Crawler Ninja
 -------------
 
-This crawler aims to help SEO to build custom solutions for crawling/scraping sites.
+This crawler aims to build custom solutions for crawling/scraping sites.
 For example, it can help to audit a site, find expired domains, build corpus, scrap texts, find netlinking spots, retrieve site ranking, check if web pages are correctly indexed, ...
 
 This is just a matter of plugins ! :-) We plan to build generic & simple plugins but you are free to create your owns.
@@ -154,8 +154,10 @@ var c = new crawler.Crawler({
 - images             : if true crawl images, default = true.
 - protocols          : list of the protocols to crawl, default = ["http", "https"].
 - timeout            : timeout per requests in milliseconds, default = 20000.
-- retries            : number of retries if the request fails, default = 0.
+- retries            : number of retries if the request is on timeout, default = 3.
 - retryTimeout       : number of milliseconds to wait before retrying,  default = 10000.
+- maxErrors          : number of timeout errors before forcing  to decrease the crawl rate, default is 5. If the value is -1, there is no check.
+- errorRates         : an array of crawl rates to apply if there are no too many errors, default : [200,350,500] (in ms)
 - skipDuplicates     : if true skips URIs that were already crawled, default is true.
 - rateLimits         : number of milliseconds to delay between each requests , default = 0.
 - depthLimit         : the depth limit for the crawl, default is no limit.
@@ -163,6 +165,7 @@ var c = new crawler.Crawler({
  follow directly the redirection, default is false.
 - userAgent          : String, defaults to "node-crawler/[version]"
 - referer            : String, if truthy sets the HTTP referer header
+- domainBlackList    : The list of domains to avoid to crawl (an array of String). The default list is in the file :  /default-lists/domain-black-list.js
 - proxyList          : The list of proxy to use for each crawler request (see below).
 
 
@@ -308,6 +311,75 @@ Please, feel free to read the code in log-plugin to get more info on how to log 
 More features & flexibilities will be added in the upcoming releases.
 
 
+Control the crawl rate
+-----------------------
+All sites cannot support an intensive crawl. This crawl provide 2 solutions to control the crawl rates :
+- implicit : the crawl decrease the crawl rate if there are too many timeouts on a host. the crawl rate is controlled for each crawled hosts separately.
+- explicit : you can specify the crawl rate in the crawler config. This setting is unique for all hosts.
+
+
+**Implicit setting**
+
+Without changing the crawler config, it will decrease the crawl rate after 5 timouts errors on a host. It will force a rate of 200ms between each requests. If new 5 timout errors still occur, it will use a rate of 350ms and after that a rate of 500ms between all requests for this host. If the timouts persist, the crawler will cancel the crawl on that host.
+
+You can change the default values for this implicit setting (5 timout errors & rates = 200, 350, 500ms). Here is an example :
+
+```javascript
+var crawler = require("crawler-ninja");
+var logger  = require("crawler-ninja/plugins/log-plugin");
+
+var c = new crawler.Crawler({
+  // new values for the implicit setting
+  maxErrors : 5,
+  errorRates : [300, 600, 900]
+
+});
+
+var log = new logger.Plugin(c);
+
+c.on("end", function() {
+
+    var end = new Date();
+    console.log("End of crawl !, done in : " + (end - start));
+
+
+});
+
+var start = new Date();
+c.queue({url : "http://www.mysite.com/"});
+```
+Note that an higher value for maxErrors can decrease the number of analyzed pages. You can assign the value -1 to maxErrors in order to desactivate the implicit setting
+
+**Explicit setting**
+
+In this configuration, you are apply the same crawl rate for all requests on all hosts.
+
+```javascript
+var crawler = require("crawler-ninja");
+var logger  = require("crawler-ninja/plugins/log-plugin");
+
+var c = new crawler.Crawler({
+  rateLimits         : 200 //200ms between each request
+
+});
+
+var log = new logger.Plugin(c);
+
+c.on("end", function() {
+
+    var end = new Date();
+    console.log("End of crawl !, done in : " + (end - start));
+
+
+});
+
+var start = new Date();
+c.queue({url : "http://www.mysite.com/"});
+```
+
+
+If both settings are applied for one crawl, the implicit setting will be forced by the crawler after the "maxErrors".
+
 Current Plugins
 ---------------
 
@@ -322,7 +394,7 @@ Rough todolist
  * More & more plugins (in progress)
  * Use Riak as default persistence layer/Crawler Store
  * Multicore architecture and/or micro service architecture for plugins that requires a lot of CPU usage
- * CLI for extracting data from the Crawl Store
+ * CLI for extracting data from the Crawl DB
  * Build UI : dashboards, view project data, ...
 
 
@@ -361,4 +433,5 @@ ChangeLog
   - Too many issues with winston, use Bunyan for the logs
   - Refactor how to set the urls in the crawl option : simple url, an array of urls or of json option objects.
   - Review the doc aka README
-  - Review how to manage the timeout in function of the site to crawl. If too many timeouts, the crawler will change the settings in order to decrease request concurrency.
+  - Review how to manage the timeouts in function of the site to crawl. If too many timeouts for one domain, the crawler will change the settings in order to decrease request concurrency. If errors persist, the crawler will stop to crawl this domain.
+  - Add support for a black list of domain.

@@ -206,7 +206,7 @@ describe('Audit Plugin Basic tests', function() {
         });
 
         /*
-        it.only('Should decrease crawl rate if there are too many errors', function(done) {
+        it.only('Should stop to crawl the site if there are too many errors', function(done) {
             this.timeout(60000);
             var c = new crawler.Crawler({skipDuplicates : false, maxConnections: 2, timeout: 50, maxErrors : 3, retries : 2, retryTimeout:200});
             var audit = new seoaudit.Plugin(c);
@@ -224,6 +224,7 @@ describe('Audit Plugin Basic tests', function() {
 
         });
         */
+
 
         it('Should crawl even with dns error', function(done) {
 

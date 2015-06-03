@@ -38,6 +38,12 @@ function Plugin(crawler) {
 
    });
 
+   this.crawler.on("end", function() {
+
+     log.info({message : "End of the crawl"});
+
+   });
+
  }
 
 
