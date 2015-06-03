@@ -165,7 +165,7 @@ var c = new crawler.Crawler({
  follow directly the redirection, default is false.
 - userAgent          : String, defaults to "node-crawler/[version]"
 - referer            : String, if truthy sets the HTTP referer header
-- domainBlackList    : The list of domains to avoid to crawl (an array of String). The default list is in the file :  /default-lists/domain-black-list.js
+- domainBlackList    : The list of domain names (without tld) to avoid to crawl (an array of String). The default list is in the file :  /default-lists/domain-black-list.js
 - proxyList          : The list of proxy to use for each crawler request (see below).
 
 
@@ -429,9 +429,9 @@ ChangeLog
 0.1.6
  - Review logger : use winston, different log files : the full crawl, errors and urls. Gives the possibility to create a specific logger for a plugin.
 
-0.1.7 (in progress)
+0.1.7
   - Too many issues with winston, use Bunyan for the logs
   - Refactor how to set the urls in the crawl option : simple url, an array of urls or of json option objects.
   - Review the doc aka README
   - Review how to manage the timeouts in function of the site to crawl. If too many timeouts for one domain, the crawler will change the settings in order to decrease request concurrency. If errors persist, the crawler will stop to crawl this domain.
-  - Add support for a black list of domain.
+  - Add support for a blacklist of domains.

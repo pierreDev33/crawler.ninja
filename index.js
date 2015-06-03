@@ -141,7 +141,6 @@ Crawler.prototype.queue = function(options) {
     // if String, we expect to receive an url
     if (_.isString(options)) {
       this.startFromHosts.add(URI.host(options));
-
       this.httpRequester.queue(this.addDefaultOptions({uri:options, url:options}, this.config))
     }
     // Last possibility, this is a json
@@ -503,7 +502,8 @@ Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri,
   }
 
   // 5. Check if the domain is in the black-list
-  if (result.domainBlackList.indexOf(URI.domain(link)) > 0) {
+  if (result.domainBlackList.indexOf(URI.domainName(link)) > 0) {
+
     return false;
   }
 

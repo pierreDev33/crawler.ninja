@@ -161,7 +161,7 @@ describe('Audit Plugin Basic tests', function() {
 
         it('Should crawl even with timout', function(done) {
             this.timeout(5000);
-            var c = new crawler.Crawler({timeout: 50});
+            var c = new crawler.Crawler({timeout: 10, maxErrors:-1, retries:1, retryTimeout:5, });
             var audit = new seoaudit.Plugin(c);
             var log = new logger.Plugin(c);
 
@@ -169,7 +169,7 @@ describe('Audit Plugin Basic tests', function() {
 
                 var resource = audit.resources.get("http://localhost:9999/timeout");
                 //console.log(audit.resources.get("http://localhost:9999/timeout"));
-                assert(resource.statusCode==408);
+                assert(resource.statusCode == 408);
                 assert(audit.outLinks.get("http://localhost:9999/page4.html")[0].page == "http://localhost:9999/timeout");
                 assert(audit.outLinks.get("http://localhost:9999/page4.html")[1].page == "http://localhost:9999/");
                 assert(audit.inLinks.get("http://localhost:9999/timeout")[0].page == "http://localhost:9999/page4.html");

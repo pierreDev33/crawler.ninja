@@ -48,4 +48,21 @@ describe('External Links', function() {
 
         });
 
+        it('Should not crawl domains that are in the black list', function(done) {
+
+            var c = new crawler.Crawler();
+            var audit = new seoaudit.Plugin(c);
+
+            c.on("end", function(){
+
+                assert(audit.resources.toArray() == 0);
+                assert(audit.errors.toArray()[0].error.code == "DOMAINBLACKLIST");
+                done();
+
+            });
+
+            c.queue({url : "http://www.youtube.com"});
+
+        });
+
 });
