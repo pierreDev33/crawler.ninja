@@ -147,7 +147,8 @@ var c = new crawler.Crawler({
 
 - maxConnections     : the number of connections used to crawl, default is 10.
 - externalLinks      : if true crawl external links, default = false.
-- externalDomains    : if true crawl the  external domains. This option can crawl a lot of different linked domains.
+- externalDomains    : if true crawl the  external domains. This option can crawl a lot of different linked domains, defaukt = false.
+- externalHosts      : if true crawl the others hosts on the same domain, default = false.
 - scripts            : if true crawl script tags, default = true.
 - links              : if true crawl link tags, default = true.
 - linkTypes          : the type of the links tags to crawl (match to the rel attribute), default = ["canonical", "stylesheet"].
@@ -435,3 +436,8 @@ ChangeLog
   - Review the doc aka README
   - Review how to manage the timeouts in function of the site to crawl. If too many timeouts for one domain, the crawler will change the settings in order to decrease request concurrency. If errors persist, the crawler will stop to crawl this domain.
   - Add support for a blacklist of domains.
+
+0.1.8
+
+ - Add options to limit the crawl for one host or one entire domain.
+-  Add option to follow robots.txt rules.    

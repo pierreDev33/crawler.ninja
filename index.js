@@ -21,6 +21,7 @@ var DEFAULT_ERROR_RATES = [200, 350, 500];
 
 var DEFAULT_CRAWL_EXTERNAL_LINKS = false;
 var DEFAULT_CRAWL_EXTERNAL_DOMAINS = false;
+var DEFAULT_CRAWL_EXTERNAL_HOSTS = false;
 var DEFAULT_CRAWL_SCRIPTS = true;   // Crawl <script>
 var DEFAULT_CRAWL_LINKS = true;     // Crawl <link>
 var DEFAULT_CRAWL_IMAGES = true;
@@ -73,6 +74,9 @@ function Crawler(config) {
 
     // list of the hosts from which the crawl starts
     this.startFromHosts = new Set();
+
+    // list of the domains from wih the crawl starts
+    this.startFromDomains = new Set();
 
     // Default config
     this.config = this.createDefaultConfig();
@@ -141,6 +145,7 @@ Crawler.prototype.queue = function(options) {
     // if String, we expect to receive an url
     if (_.isString(options)) {
       this.startFromHosts.add(URI.host(options));
+      this.startFromDomains.add(URI.domain(options));
       this.httpRequester.queue(this.addDefaultOptions({uri:options, url:options}, this.config))
     }
     // Last possibility, this is a json
@@ -157,6 +162,7 @@ Crawler.prototype.queue = function(options) {
       }
       else {
         this.startFromHosts.add(URI.host(_.has(options, "url") ? options.url : options.uri));
+        this.startFromDomains.add(URI.domain(_.has(options, "url") ? options.url : options.uri)); 
         this.httpRequester.queue(this.addDefaultOptions(options, this.config));
       }
     }
@@ -216,6 +222,7 @@ Crawler.prototype.createDefaultConfig = function(url) {
       rateLimits              : DEFAULT_RATE_LIMITS,
       externalLinks           : DEFAULT_CRAWL_EXTERNAL_LINKS,
       externalDomains         : DEFAULT_CRAWL_EXTERNAL_DOMAINS,
+      externalHosts           : DEFAULT_CRAWL_EXTERNAL_HOSTS,
       protocols               : DEFAULT_PROTOCOLS_TO_CRAWL,
       depthLimit              : DEFAULT_DEPTH_LIMIT,
       followRedirect          : DEFAULT_FOLLOW_301,
@@ -224,7 +231,7 @@ Crawler.prototype.createDefaultConfig = function(url) {
       linkTypes               : DEFAULT_LINKS_TYPES,
       scripts                 : DEFAULT_CRAWL_SCRIPTS,
       userAgent               : DEFAULT_USER_AGENT,
-      domainBlackList       : domainBlackList,
+      domainBlackList         : domainBlackList,
 
       onCrawl : function(error, result){
         self.crawl(error, result);
@@ -491,23 +498,28 @@ Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri,
     return false;
   }
 
-  // 3. Check if we need to crawl external domains
-  if (! this.startFromHosts.has(URI.host(parentUri)) && ! result.externalDomains) {
+  // 3. Check if we need to crawl others host
+  if (! this.startFromHosts.has(URI.host(parentUri)) && ! result.externalHosts) {
     return false;
   }
 
-  // 4. Check if the link is based on a good protocol
+  // 3. Check if we need to crawl others domain
+  if (! this.startFromDomains.has(URI.domain(parentUri)) && ! result.externalDomains) {
+    return false;
+  }
+
+  // 5. Check if the link is based on a good protocol
   if (result.protocols.indexOf(URI.protocol(link)) < 0) {
     return false;
   }
 
-  // 5. Check if the domain is in the black-list
+  // 6. Check if the domain is in the black-list
   if (result.domainBlackList.indexOf(URI.domainName(link)) > 0) {
 
     return false;
   }
 
-  // 6. Check if there is a rule in the crawler configuration
+  // 7. Check if there is a rule in the crawler configuration
   if (! result.canCrawl) {
     return true;
   }
