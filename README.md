@@ -439,5 +439,10 @@ ChangeLog
 
 0.1.8
 
- - Add options to limit the crawl for one host or one entire domain.
--  Add option to follow robots.txt rules.    
+- Add options to limit the crawl for one host or one entire domain.
+
+0.1.9
+
+- Bug fix : newest Bunyan version doesn't create the log dir.
+- Manage more request errors type (with or without retries)
+- Add a suffix black list in order to exclude the crawl with a specific suffix (extention) like .pdf,.docx, ...

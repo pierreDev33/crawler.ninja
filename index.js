@@ -2,12 +2,15 @@ var events      = require('events');
 var timers      = require('timers');
 var util        = require("util");
 var _           = require("underscore");
-var requester   = require("./lib/queue-requester");
-var URI         = require('./lib/uri.js');
 var Map         = require("collections/fast-map");
 var Set         = require("collections/fast-set");
+var requester   = require("./lib/queue-requester");
+var URI         = require('./lib/uri.js');
 var html        = require("./lib/html.js");
+
+
 var domainBlackList  = require("./default-lists/domain-black-list.js").list();
+var suffixBlackList  = require("./default-lists/suffix-black-list.js").list();
 
 var DEFAULT_NUMBER_OF_CONNECTIONS = 10;
 var DEFAULT_DEPTH_LIMIT = -1; // no limit
@@ -162,7 +165,7 @@ Crawler.prototype.queue = function(options) {
       }
       else {
         this.startFromHosts.add(URI.host(_.has(options, "url") ? options.url : options.uri));
-        this.startFromDomains.add(URI.domain(_.has(options, "url") ? options.url : options.uri)); 
+        this.startFromDomains.add(URI.domain(_.has(options, "url") ? options.url : options.uri));
         this.httpRequester.queue(this.addDefaultOptions(options, this.config));
       }
     }
@@ -232,6 +235,7 @@ Crawler.prototype.createDefaultConfig = function(url) {
       scripts                 : DEFAULT_CRAWL_SCRIPTS,
       userAgent               : DEFAULT_USER_AGENT,
       domainBlackList         : domainBlackList,
+      suffixBlackList         : suffixBlackList,
 
       onCrawl : function(error, result){
         self.crawl(error, result);
@@ -513,13 +517,18 @@ Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri,
     return false;
   }
 
-  // 6. Check if the domain is in the black-list
+  // 6. Check if the domain is in the domain black-list
   if (result.domainBlackList.indexOf(URI.domainName(link)) > 0) {
 
     return false;
   }
 
-  // 7. Check if there is a rule in the crawler configuration
+  // 7. Check if the domain is in the suffix black-list
+  if (result.suffixBlackList.indexOf(URI.suffix(link)) > 0) {
+    return false;
+  }
+
+  // 8. Check if there is a rule in the crawler configuration
   if (! result.canCrawl) {
     return true;
   }

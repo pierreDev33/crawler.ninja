@@ -1,6 +1,6 @@
 {
   "name": "crawler-ninja",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "A web crawler made for the SEO based on plugins. Please wait or contribute ... still in beta",
   "main": "index.js",
   "repository": {
@@ -16,6 +16,7 @@
     "crypto": "0.0.3",
     "request": "2.57.0",
     "riak-js": "^1.0.3",
+    "robots-parser": "^1.0.0",
     "simple-proxies": "^0.1.8",
     "underscore": "^1.8.2"
   },

@@ -1,4 +1,4 @@
-module.exports.list = function (body) {
+module.exports.list = function () {
 
   return [
     "google",
