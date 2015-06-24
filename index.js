@@ -262,17 +262,15 @@ Crawler.prototype.createDefaultConfig = function(url) {
 /**
  * Default callback function used when the http queue requester get a resource (html, pdf, css, ...)
  *
- * @param error The usual nodejs error
- * @param result : the result of the resource crawl
- * @param the jquery like object for accessing to the HTML tags. Null is the resource
- *        is not an HTML
+ * @param error : the usual nodejs error
+ * @param result: the crawled resource
+ *
  */
 Crawler.prototype.crawl = function (error, result) {
 
 
     var self = this;
     if (error) {
-        //console.log(error);
         timers.setImmediate(emitErrorEvent, self, error, result);
         return;
     }
