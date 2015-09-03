@@ -2,6 +2,7 @@ var assert      = require("assert");
 var proxyLoader = require("simple-proxies/lib/proxyfileloader");
 var crawler     = require("../index.js");
 var testSite    = require("./website/start.js").site;
+var _           = require("underscore");
 
 var proxyList = null;
 
@@ -38,7 +39,8 @@ describe('Proxies', function() {
             });
 
             c.on("error", function(error, result) {
-               assert(result.proxy=="http://john:password@localhost:8000");
+               assert(_.find(result.proxyList.getProxies(), function(p){ return p.getUrl()=== result.proxy; }));
+
             });
 
             c.queue({url : "http://localhost:9999/internal-links.html"});

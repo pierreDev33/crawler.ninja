@@ -34,7 +34,7 @@ function Plugin(crawler) {
 
     this.crawler.on("error", function(error, result){
 
-        
+
         self.errors.add({uri : result.uri, error : error});
         if (error.code == ERROR_CODE_TIMEOUT) {
           var resourceInfo = self.getresourceInfo(result.uri);
@@ -231,7 +231,6 @@ Plugin.prototype.crawlLink = function(page, link, anchor, isDoFollow) {
  *
  */
 Plugin.prototype.crawlImage = function(page, link, alt) {
-
 
     // Outlinks
     addToListMap(this.outLinks, page, {page: link, anchor : alt, isDoFollow : null});

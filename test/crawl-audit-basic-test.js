@@ -10,6 +10,7 @@ var crawler = require("../index.js");
 
 describe('Audit Plugin Basic tests', function() {
 
+
         it('Should return an error for an invalid site', function(done) {
 
             var c = new crawler.Crawler();
@@ -101,7 +102,7 @@ describe('Audit Plugin Basic tests', function() {
             var log = new logger.Plugin(c);
 
             c.on("end", function(){
-                //console.log(audit.resources.keys());
+
                 var resource = audit.resources.get("http://localhost:9999/200x200-image.jpg");
                 assert(resource.contentType =='image/jpeg');
 
@@ -161,7 +162,7 @@ describe('Audit Plugin Basic tests', function() {
 
         it('Should crawl even with timout', function(done) {
             this.timeout(5000);
-            var c = new crawler.Crawler({timeout: 10, maxErrors:-1, retries:1, retryTimeout:5, });
+            var c = new crawler.Crawler({timeout: 50, maxErrors:-1, retries:1, retryTimeout:5 });
             var audit = new seoaudit.Plugin(c);
             var log = new logger.Plugin(c);
 
@@ -179,11 +180,12 @@ describe('Audit Plugin Basic tests', function() {
             });
 
             c.queue({url : "http://localhost:9999/page4.html"});
+            //c.queue({url : "http://localhost:9999/timeout"});
 
         });
 
         it('Should crawl even with timout with retries', function(done) {
-            this.timeout(4000);
+            this.timeout(10000);
             var c = new crawler.Crawler({timeout: 50, retries : 3, retryTimeout : 500});
             var audit = new seoaudit.Plugin(c);
             var log = new logger.Plugin(c);

@@ -2,15 +2,18 @@ var events      = require('events');
 var timers      = require('timers');
 var util        = require("util");
 var _           = require("underscore");
+var async       = require('async');
 var Map         = require("collections/fast-map");
 var Set         = require("collections/fast-set");
 var requester   = require("./lib/queue-requester");
 var URI         = require('./lib/uri.js');
 var html        = require("./lib/html.js");
+var store       = require("./lib/store/store.js");
 
 
 var domainBlackList  = require("./default-lists/domain-black-list.js").list();
 var suffixBlackList  = require("./default-lists/suffix-black-list.js").list();
+
 
 var DEFAULT_NUMBER_OF_CONNECTIONS = 10;
 var DEFAULT_DEPTH_LIMIT = -1; // no limit
@@ -37,6 +40,8 @@ var DEFAULT_USER_AGENT = "NinjaBot";
 var DEFAULT_CACHE = false;
 var DEFAULT_METHOD = 'GET';
 var DEFAULT_REFERER = false;
+
+var DEFAULT_STORE_MODULE = "./memory-store.js";
 
 /**
  * The crawler object
@@ -68,19 +73,6 @@ var DEFAULT_REFERER = false;
  */
 function Crawler(config) {
 
-
-    // Store the depth for each crawled url
-    // Override config.updateDepth function in order to use another storage
-    // This default implementation is not recommanded for big crawl
-    // TODO : use an external store
-    this.depthUrls = new Map();
-
-    // list of the hosts from which the crawl starts
-    this.startFromHosts = new Set();
-
-    // list of the domains from wih the crawl starts
-    this.startFromDomains = new Set();
-
     // Default config
     this.config = this.createDefaultConfig();
 
@@ -93,6 +85,9 @@ function Crawler(config) {
     if (this.config.rateLimits !== 0) {
         this.config.maxConnections = 1;
     }
+
+    // create the crawl store
+    store.createStore(this.config.storeModuleName, this.config.storeParams ? this.config.storeParams : null);
 
 
     // assign the default updateDepth method used to calculate the crawl depth
@@ -115,7 +110,7 @@ util.inherits(Crawler, events.EventEmitter);
 /**
  * Add one or more urls to crawl
  *
- * @param The url to crawl
+ * @param The url(s) to crawl
  *
  */
 Crawler.prototype.queue = function(options) {
@@ -123,15 +118,17 @@ Crawler.prototype.queue = function(options) {
     var self = this;
 
     // Error if no options
-    if (! options)  {
+    if (! options){
         if (self.config.onCrawl) {
-            self.config.onCrawl({errorCode : "NO_OPTIONS"}, {method:"GET", url : "unknown", proxy : "", error : true});
-        }
-
-        if (this.httpRequester.idle()) {
-          self.config.onDrain();
+            self.config.onCrawl({errorCode : "NO_OPTIONS"}, {method:"GET", url : "unknown", proxy : "", error : true},
+                                function(error){
+                                    if (self.httpRequester.idle()) {
+                                      self.config.onDrain();
+                                    }
+                                });
         }
         return;
+
     }
 
 
@@ -147,46 +144,65 @@ Crawler.prototype.queue = function(options) {
 
     // if String, we expect to receive an url
     if (_.isString(options)) {
-      this.startFromHosts.add(URI.host(options));
-      this.startFromDomains.add(URI.domain(options));
-      this.httpRequester.queue(this.addDefaultOptions({uri:options, url:options}, this.config))
+      store.getStore().addStartUrl(options, function(error) {
+          self.httpRequester.queue(addDefaultOptions({uri:options, url:options}, self.config));
+      });
+
     }
     // Last possibility, this is a json
     else {
 
       if (! _.has(options, "url") && ! _.has(options, "uri")) {
         if (self.config.onCrawl) {
-            self.config.onCrawl({errorCode : "NO_URL_OPTION"}, {method:"GET", url : "unknown", proxy : "", error : true});
+            self.config.onCrawl({errorCode : "NO_URL_OPTION"}, {method:"GET", url : "unknown", proxy : "", error : true},
+                                function(error){
+                                    if (self.httpRequester.idle()) {
+                                      self.config.onDrain();
+                                    }
+                                });
         }
 
-        if (this.httpRequester.idle()) {
-          self.config.onDrain();
-        }
       }
       else {
-        this.startFromHosts.add(URI.host(_.has(options, "url") ? options.url : options.uri));
-        this.startFromDomains.add(URI.domain(_.has(options, "url") ? options.url : options.uri));
-        this.httpRequester.queue(this.addDefaultOptions(options, this.config));
+        store.getStore().addStartUrl(_.has(options, "url") ? options.url : options.uri, function(error) {
+            self.httpRequester.queue(addDefaultOptions(options, self.config));
+        });
       }
     }
 
 
 }
 
-Crawler.prototype.addDefaultOptions = function(options, defaultOptions) {
+/**
+ *  Add the default crawler options into the option used for the current request
+ *
+ *
+ * @param the option used for the current request
+ * @return
+ */
+ function addDefaultOptions(options, defaultOptions) {
 
     _.defaults(options, defaultOptions);
     options.maxRetries = options.retries;
+
     return options;
 
 }
 
+/**
+ *  Make a copy of an option object for a specific url
+ *
+ *
+ * @param the options object to create/copy
+ * @param the url to apply into the new option object
+ * @return the new options object
+ */
 Crawler.prototype.buildNewOptions = function(options, newUrl) {
 
     var o = this.createDefaultConfig(newUrl);
 
     // Copy only options attributes that are in the options used for the previous request
-    // Could be simple ? ;-)
+    // Could be more simple ? ;-)
     o =  _.extend(o, _.pick(options, _.without(_.keys(o), "url", "uri") ));
 
     //Reset setting used for retries when an error occurs like a timeout
@@ -236,9 +252,10 @@ Crawler.prototype.createDefaultConfig = function(url) {
       userAgent               : DEFAULT_USER_AGENT,
       domainBlackList         : domainBlackList,
       suffixBlackList         : suffixBlackList,
+      storeModuleName             : DEFAULT_STORE_MODULE,
 
-      onCrawl : function(error, result){
-        self.crawl(error, result);
+      onCrawl : function(error, result, callback){
+        self.crawl(error, result, callback);
       },
 
       onDrain : function(){
@@ -266,64 +283,72 @@ Crawler.prototype.createDefaultConfig = function(url) {
  * @param result: the crawled resource
  *
  */
-Crawler.prototype.crawl = function (error, result) {
-
+Crawler.prototype.crawl = function (error, result, callback) {
 
     var self = this;
+
+    // if HTTP error, emit an error event to the plugins
     if (error) {
         timers.setImmediate(emitErrorEvent, self, error, result);
-        return;
+        return callback();
     }
-
     var $ = html.isHTML(result.body) ? html.$(result.body) : null;
 
+    // No error => emit a crawl event to the plugins
     timers.setImmediate(emitCrawlEvent, self,result, $);
 
-    // if $ is defined, this is an HTML page with an http status 200
-    if ($) {
-      this.analyzeHTML(result,$);
-    }
+    // Analyse the HTTP response in order to check the content (links, images, ...)
+    // or apply a redirect
+    async.parallel([
+      async.apply(self.analyzeHTML.bind(self), result, $),
+      async.apply(self.applyRedirect.bind(self), result),
+    ], callback);
 
-
-    // if 30* & followRedirect = false => chain 30*
-    if (result.statusCode >= 300 && result.statusCode <= 399  &&  ! this.config.followRedirect) {
-
-        var from = result.uri;
-        var to = result.headers["location"];
-        var to = URI.linkToURI(from, to);
-        timers.setImmediate(emitRedirectEvent, self, from, to, result.statusCode);
-
-        this.httpRequester.queue(this.buildNewOptions(result,to));
-
-    }
 }
 
 
+Crawler.prototype.applyRedirect = function(result, callback) {
+  // if 30* & followRedirect = false => chain 30*
+  if (result.statusCode >= 300 && result.statusCode <= 399  &&  ! this.config.followRedirect) {
+
+      var from = result.uri;
+      var to = result.headers["location"];
+      var to = URI.linkToURI(from, to);
+
+      // Emit a redirect event to the plugins
+      timers.setImmediate(emitRedirectEvent, this, from, to, result.statusCode);
+
+      this.httpRequester.queue(this.buildNewOptions(result,to));
+  }
+
+  callback();
+}
 
 /**
- * Analyze an HTML page. Mainly, found a.href & links in the page
+ * Analyze an HTML page. Mainly, found a.href, links,scripts & images in the page
  *
  * @param result : the result of the crawled resource
  * @param the jquery like object for accessing to the HTML tags. Null is the resource
  *        is not an HTML
  */
-Crawler.prototype.analyzeHTML = function(result, $) {
+Crawler.prototype.analyzeHTML = function(result, $, callback) {
 
+  // if $ is note defined, this is not a HTML page with an http status 200
+  if (! $) {
+    return callback();
+  }
 
-    this.crawlHrefs(result, $);
+  log("Analyze HTML page : " + result.url);
+  var self = this;
 
-    if (this.config.links){
-        this.crawlLinks(result, $);
-    }
+  async.parallel([
 
-    if (this.config.scripts) {
-        this.crawlScripts(result,$);
-    }
+    async.apply(self.crawlHrefs.bind(self), result, $),
+    async.apply(self.crawlLinks.bind(self), result, $),
+    async.apply(self.crawlScripts.bind(self), result, $),
+    async.apply(self.crawlImages.bind(self), result, $),
 
-    if (this.config.images) {
-      this.crawlImages(result,$);
-    }
-
+  ], callback);
 
 }
 
@@ -335,14 +360,20 @@ Crawler.prototype.analyzeHTML = function(result, $) {
  * @param the jquery like object for accessing to the HTML tags.
  *
  */
-Crawler.prototype.crawlHrefs = function(result, $) {
-  var parentUri = result.uri
-  var self = this;
+Crawler.prototype.crawlHrefs = function(result, $, endCallback) {
 
-  $('a').each(function(index, a) {
+    log("CrawHrefs : " + result.url);
+    var self = this;
+    async.each($('a'), function(a, callback) {
+        self.crawlHref($, result, a, callback);
+    }, endCallback);
+
+}
+
+Crawler.prototype.crawlHref = function($,result, a, callback) {
 
       var link = $(a).attr('href');
-
+      var parentUri = result.uri;
       if (link) {
 
         var anchor = $(a).text() ? $(a).text() : "";
@@ -351,22 +382,17 @@ Crawler.prototype.crawlHrefs = function(result, $) {
 
         var linkUri = URI.linkToURI(parentUri, link);
 
-        var currentDepth = self.updateDepth(parentUri, linkUri);
+        timers.setImmediate(emitCrawlHrefEvent, this, "crawlLink", parentUri, linkUri, anchor, isDoFollow);
+        this.checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, callback);
 
-        timers.setImmediate(emitCrawlHrefEvent, self, "crawlLink", parentUri, linkUri, anchor, isDoFollow);
 
-
-        if (self.isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri, anchor, isDoFollow)) {
-          self.httpRequester.queue(self.buildNewOptions(result,linkUri));
-        }
-        else {
-          timers.setImmediate(emitCrawlHrefEvent, self, "uncrawl", parentUri, linkUri, anchor, isDoFollow);
-        }
+      }
+      else {
+        callback();
       }
 
-  });
-
 }
+
 
 /**
  * Crawl link tags found in the HTML page
@@ -375,40 +401,44 @@ Crawler.prototype.crawlHrefs = function(result, $) {
  * @param result : the result of the crawled resource
  * @param the jquery like object for accessing to the HTML tags.
  */
-Crawler.prototype.crawlLinks = function(result, $) {
+Crawler.prototype.crawlLinks = function(result, $, endCallback) {
 
-  var parentUri = result.uri;
-  var self = this;
+    if (! this.config.links){
+        return endCallback();
+    }
 
-  $('link').each(function(index, linkTag) {
+    log("CrawlLinks : " + result.url);
+    var self = this;
 
+    async.each($('link'), function(linkTag, callback) {
+        self.crawLink($, result, linkTag, callback);
+    }, endCallback);
+}
+
+Crawler.prototype.crawLink = function($,result,linkTag, callback) {
       var link = $(linkTag).attr('href');
+      var parentUri = result.uri;
 
       if (link) {
 
           var rel =  $(linkTag).attr('rel');
 
-          if (self.config.linkTypes.indexOf(rel) > 0) {
+          if (this.config.linkTypes.indexOf(rel) > 0) {
               var linkUri = URI.linkToURI(parentUri, link);
-              var currentDepth = self.updateDepth(parentUri, linkUri);
+              timers.setImmediate(emitCrawlLinkEvent, this, parentUri, linkUri);
+              this.checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
 
-              timers.setImmediate(emitCrawlLinkEvent, self, parentUri, linkUri);
-
-              if (self.isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri)) {
-
-                self.httpRequester.queue(self.buildNewOptions(result,linkUri));
-
-              }
-              else {
-                timers.setImmediate(emitUnCrawlEvent, self, parentUri, linkUri);
-              }
+          }
+          else {
+            callback();
           }
 
       }
-
-  });
-
+      else {
+        callback();
+      }
 }
+
 
 /**
  * Crawl script tags found in the HTML page
@@ -416,33 +446,38 @@ Crawler.prototype.crawlLinks = function(result, $) {
  * @param result : the result of the crawled resource
  * @param the jquery like object for accessing to the HTML tags.
  */
-Crawler.prototype.crawlScripts = function(result, $) {
+Crawler.prototype.crawlScripts = function(result, $, endCallback) {
 
-  var parentUri = result.uri;
-  var self = this;
+    if (! this.config.scripts) {
+      return endCallback();
+    }
 
-  $('script').each(function(index, link) {
+    log("CrawlScripts : " + result.url);
+    var self = this;
 
-      var link = $(link).attr('src');
-      if (link) {
-        var linkUri = URI.linkToURI(parentUri, link);
-        var currentDepth = self.updateDepth(parentUri, linkUri);
+    async.each($('script'), function(script, callback) {
+        self.crawlScript($, result, script, callback);
+    }, endCallback);
+}
 
-        timers.setImmediate(emitCrawlLinkEvent, self, parentUri, linkUri);
+Crawler.prototype.crawlScript = function($,result, script, callback) {
 
-        if (self.isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri)) {
+    var link = $(script).attr('src');
+    var parentUri = result.uri;
 
-          self.httpRequester.queue(self.buildNewOptions(result, linkUri));
+    if (link) {
+          var linkUri = URI.linkToURI(parentUri, link);
+          timers.setImmediate(emitCrawlLinkEvent, this, parentUri, linkUri);
+          this.checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
 
-        }
-        else {
-          timers.setImmediate(emitUnCrawlEvent, self, parentUri, linkUri);
-        }
-      }
+    }
+    else {
+      callback();
+    }
 
-  });
 
 }
+
 
 /**
  * Crawl image tags found in the HTML page
@@ -450,35 +485,68 @@ Crawler.prototype.crawlScripts = function(result, $) {
  * @param result : the result of the crawled resource
  * @param the jquery like object for accessing to the HTML tags.
  */
-Crawler.prototype.crawlImages = function(result, $) {
+Crawler.prototype.crawlImages = function(result, $, endCallback) {
 
-  var parentUri = result.uri;
-  var self = this;
+    if (! this.config.images) {
+      return endCallback();
+    }
 
-  $('img').each(function(index, img) {
+    log("CrawlImages : " + result.url);
+    var self = this;
+
+    async.each($('img'), function(img, callback) {
+        self.crawlImage($, result, img, callback);
+    }, endCallback);
+}
+
+Crawler.prototype.crawlImage = function($,result, img, callback) {
+      var parentUri = result.uri;
 
       var link = $(img).attr('src');
       var alt = $(img).attr('alt');
       if (link) {
-        var linkUri = URI.linkToURI(parentUri, link);
+          var linkUri = URI.linkToURI(parentUri, link);
+          log("Found image on " + parentUri + " : " + linkUri);
+          timers.setImmediate(emitCrawlImage, this, parentUri, linkUri, alt);
+          this.checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
 
-        var currentDepth = self.updateDepth(parentUri, linkUri);
-
-        timers.setImmediate(emitCrawlImage, self, parentUri, linkUri, alt);
-
-        if (self.isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri)) {
-
-          self.httpRequester.queue(self.buildNewOptions(result,linkUri));
-
-        }
-        else {
-          timers.setImmediate(emitUnCrawlEvent, self, parentUri, linkUri);
-        }
       }
-
-  });
-
+      else {
+        callback();
+      }
 }
+
+Crawler.prototype.checkUrlToCrawl = function(result, parentUri, linkUri, anchor, isDoFollow, endCallback) {
+    var self = this;
+
+    async.waterfall([
+        function(callback) {
+
+            self.updateDepth(parentUri, linkUri, function(error, currentDepth) {
+                callback(error,currentDepth);
+            });
+
+        },
+        function(currentDepth, callback) {
+          self.isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri, anchor, isDoFollow, function(error, toCrawl) {
+              if (error) {
+                return callback(error);
+              }
+
+              if(toCrawl) {
+                  self.httpRequester.queue(self.buildNewOptions(result,linkUri));
+              }
+              else {
+
+                timers.setImmediate(emitCrawlHrefEvent, self, "uncrawl", parentUri, linkUri, anchor, isDoFollow);
+              }
+              callback();
+          });
+
+        }
+    ], endCallback);
+}
+
 
 /**
  * Check if a link has to be crawled
@@ -488,52 +556,55 @@ Crawler.prototype.crawlImages = function(result, $) {
  * @param true if the link is dofollow
  * @returns
  */
-Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri, link, anchor, isDoFollow) {
+Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri, link, anchor, isDoFollow, callback) {
 
-  // 1. Check the depthLimit
-  if (result.depthLimit > -1 && currentDepth > result.depthLimit) {
-    return false
-  }
+  store.getStore().isStartFromUrl(parentUri, function(error, startFrom){
 
-  // 2. Check if we need to crawl external links
-  if (URI.isExternalLink(parentUri,link) &&  ! result.externalLinks) {
-    return false;
-  }
+        // 1. Check the depthLimit
+        if (result.depthLimit > -1 && currentDepth > result.depthLimit) {
+          return callback(null, false);
+        }
 
-  // 3. Check if we need to crawl others host
-  if (! this.startFromHosts.has(URI.host(parentUri)) && ! result.externalHosts) {
-    return false;
-  }
+        // 2. Check if we need to crawl external links
+        if (URI.isExternalLink(parentUri,link) &&  ! result.externalLinks) {
+          return callback(null, false);
+        }
 
-  // 3. Check if we need to crawl others domain
-  if (! this.startFromDomains.has(URI.domain(parentUri)) && ! result.externalDomains) {
-    return false;
-  }
+        // 3. Check if we need to crawl others host
+        if (! startFrom.isStartFromHost && ! result.externalHosts) {
+          return callback(null, false);
+        }
 
-  // 5. Check if the link is based on a good protocol
-  if (result.protocols.indexOf(URI.protocol(link)) < 0) {
-    return false;
-  }
+        // 3. Check if we need to crawl others domain
+        if (! startFrom.isStartFromDomain && ! result.externalDomains) {
+          return callback(null, false);
+        }
 
-  // 6. Check if the domain is in the domain black-list
-  if (result.domainBlackList.indexOf(URI.domainName(link)) > 0) {
+        // 5. Check if the link is based on a good protocol
+        if (result.protocols.indexOf(URI.protocol(link)) < 0) {
+          return callback(null, false);
+        }
 
-    return false;
-  }
+        // 6. Check if the domain is in the domain black-list
+        if (result.domainBlackList.indexOf(URI.domainName(link)) > 0) {
+          return callback(null, false);
+        }
 
-  // 7. Check if the domain is in the suffix black-list
-  if (result.suffixBlackList.indexOf(URI.suffix(link)) > 0) {
-    return false;
-  }
+        // 7. Check if the domain is in the suffix black-list
+        if (result.suffixBlackList.indexOf(URI.suffix(link)) > 0) {
+          return callback(null, false);
+        }
 
-  // 8. Check if there is a rule in the crawler configuration
-  if (! result.canCrawl) {
-    return true;
-  }
+        // 8. Check if there is a rule in the crawler configuration
+        if (! result.canCrawl) {
+          return callback(null, true);
+        }
 
-  var check =  result.canCrawl(parentUri, link, anchor, isDoFollow);
-  //console.log(parentUri + " - " + link + " : " + check);
-  return check;
+        var check =  result.canCrawl(parentUri, link, anchor, isDoFollow);
+        return callback(null, check);
+
+  });
+
 }
 
 /**
@@ -542,34 +613,94 @@ Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri,
  *
  * @param The URI of page that contains the link
  * @param The link for which the crawl depth has to be calculated
- * @returns the crawl depth of the link
+ * @param callback(error, depth)
  *
  */
-var updateDepth = function(parentUri, linkUri) {
+var updateDepth = function(parentUri, linkUri, callback) {
 
-    if (this.depthUrls.has(parentUri)) {
+    var depths = {parentUri : parentUri, linkUri : linkUri, parentDepth : 0, linkDepth : 0};
 
-        var parentDepth = this.depthUrls.get(parentUri);
-        if (this.depthUrls.has(linkUri)) {
-            return this.depthUrls.get(linkUri);
-        }
-        else {
-          var depth = parentDepth + 1;
-          this.depthUrls.set(linkUri, depth);
-          return depth;
-        }
-    }
-    else {
-        this.depthUrls.set(parentUri, 0);
-        this.depthUrls.set(linkUri, 1);
-        return 1;
-    }
 
+    var execFns = async.seq(getDepths , calcultateDepths , saveDepths);
+
+    execFns(depths, function (error, result) {
+      if (error) {
+        callback(error);
+      }
+      return callback(error, result.linkDepth);
+    });
 
 }
 
-function emitCrawlEvent(crawler, result, $) {
+/**
+ * get the crawl depths for a parent & link uri
+ *
+ *
+ * @param a structure containing both url
+ *        {parentUri : parentUri, linkUri : linkUri}
+ * @param callback(error, depth)
+ */
+var getDepths = function (depths, callback) {
 
+    async.parallel([
+        async.apply(store.getStore().getDepth.bind(store.getStore()), depths.parentUri),
+        async.apply(store.getStore().getDepth.bind(store.getStore()), depths.linkUri)
+    ],
+    function(error, results){
+        if (error) {
+          return callback(error);
+        }
+        depths.parentDepth = results[0];
+        depths.linkDepth = results[1];
+        callback(null, depths);
+    });
+}
+
+/**
+ * Calculate the depth
+ *
+ *
+ * @param a structure containing both url
+ *        {parentUri : parentUri, linkUri : linkUri}
+ * @param callback(error, depth)
+ */
+
+var calcultateDepths = function (depths, callback) {
+    if (depths.parentDepth) {
+        // if a depth of the links doesn't exist : assign the parehtDepth +1
+        // if not, this link has been already found in the past => don't update its depth
+        if (! depths.linkDepth) {
+            depths.linkDepth = depths.parentDepth + 1;
+        }
+    }
+    else {
+        depths.parentDepth = 0;
+        depths.linkDepth = 1;
+    }
+    callback(null, depths);
+}
+
+/**
+ * Save the crawl depths for a parent & link uri
+ *
+ *
+ * @param a structure containing both url
+ *        {parentUri : parentUri, linkUri : linkUri}
+ * @param callback(error, depth)
+ */
+var saveDepths = function(depths, callback) {
+
+  async.parallel([
+      async.apply(store.getStore().setDepth.bind(store.getStore()), depths.parentUri, depths.parentDepth ),
+      async.apply(store.getStore().setDepth.bind(store.getStore()), depths.linkUri, depths.linkDepth )
+  ],
+  function(error){
+      callback(error, depths);
+  });
+}
+
+
+function emitCrawlEvent(crawler, result, $) {
   crawler.emit("crawl", result, $);
 }
 
@@ -580,7 +711,6 @@ function emitErrorEvent(crawler, error, result) {
 function emitRedirectEvent(crawler, from, to, statusCode) {
   crawler.emit("crawlRedirect", from, to, statusCode);
 }
-
 
 function emitCrawlHrefEvent(crawler, eventName, parentUri, linkUri, anchor, isDoFollow) {
   crawler.emit(eventName, parentUri, linkUri, anchor, isDoFollow);
@@ -595,8 +725,32 @@ function emitUnCrawlEvent(crawler, parentUri, linkUri ) {
 }
 
 function emitCrawlImage(crawler, parentUri, linkUri, alt ) {
-
   crawler.emit("crawlImage", parentUri, linkUri, alt);
 }
+
+ /**
+ * Log method
+ *
+ *
+ * @param the message to log
+ * @param the crawl option (can be optional)
+ */
+var log = function(message, options) {
+
+    //console.log(message, options);
+
+    /*
+    var data = {
+        step    : "request-queue",
+        message : message,
+        options : options
+    }
+
+    logger.info(data);
+    */
+
+
+}
+
 
 module.exports.Crawler = Crawler;
