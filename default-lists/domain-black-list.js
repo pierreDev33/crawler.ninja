@@ -139,7 +139,8 @@ module.exports.list = function () {
     "zibb",
     "zh.wikipedia",
     "zooppa",
-    "zanox"
+    "zanox",
+    "ovh"
   ];
 
 }
