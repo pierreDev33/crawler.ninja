@@ -138,7 +138,8 @@ module.exports.list = function () {
     "writeaprisoner",
     "zibb",
     "zh.wikipedia",
-    "zooppa"
+    "zooppa",
+    "zanox"
   ];
 
 }
