@@ -137,7 +137,7 @@ You can pass these options to the Crawler() constructor like :
 
 
 var c = new crawler.Crawler({
-  externalLinks : true,
+  externalDomains : true,
   scripts : false,
   images : false
 });
@@ -146,8 +146,7 @@ var c = new crawler.Crawler({
 ```
 
 - maxConnections     : the number of connections used to crawl, default is 10.
-- externalLinks      : if true crawl external links, default = false.
-- externalDomains    : if true crawl the  external domains. This option can crawl a lot of different linked domains, defaukt = false.
+- externalDomains    : if true crawl the  external domains. This option can crawl a lot of different linked domains, default = false.
 - externalHosts      : if true crawl the others hosts on the same domain, default = false.
 - scripts            : if true crawl script tags, default = true.
 - links              : if true crawl link tags, default = true.
@@ -247,7 +246,6 @@ proxyLoader.loadProxyFile(config, function(error, proxyList) {
 
 function crawl(proxyList){
     var c = new crawler.Crawler({
-        externalLinks : true,
         images : false,
         scripts : false,
         links : false, //link tags used for css, canonical, ...

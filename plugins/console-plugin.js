@@ -10,16 +10,14 @@ function Plugin(crawler) {
    var self = this;
 
    this.crawler.on("crawl", function(result, $) {
-      console.log(result.statusCode + ' - ' + result.method + ' - ' +
-                  result.uri + ' - ' + result.responseTime + ' - ' + (result.proxy ? result.proxy : "") );
-
-
+      console.log(result.statusCode + ',' + result.method + ',' +
+                  result.uri + ',' + result.responseTime + ',' + (result.proxy ? result.proxy : "no-proxy") );
    });
 
    this.crawler.on("error", function(error, result) {
 
-     console.log("Error : " + error.code + ' - ' + + result.method + ' - ' +
-                 result.uri + ' - ' + result.responseTime + ' - ' + (result.proxy ? result.proxy : ""));
+     console.log("Error : " + error.code + ',' + + result.method + ',' +
+                 result.uri + ',' + result.responseTime + ',' + (result.proxy ? result.proxy : "no-proy"));
 
    });
 

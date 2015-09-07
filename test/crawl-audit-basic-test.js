@@ -230,7 +230,7 @@ describe('Audit Plugin Basic tests', function() {
 
         it('Should crawl even with dns error', function(done) {
 
-            var c = new crawler.Crawler({externalLinks:true});
+            var c = new crawler.Crawler({externalDomains : true});
             var audit = new seoaudit.Plugin(c);
             //var log = new logger.Plugin(c);
 

@@ -25,7 +25,7 @@ var DEFAULT_RATE_LIMITS = 0;
 var DEFAULT_MAX_ERRORS = 5;
 var DEFAULT_ERROR_RATES = [200, 350, 500];
 
-var DEFAULT_CRAWL_EXTERNAL_LINKS = false;
+var DEFAULT_FIRST_EXTERNAL_LINK_ONLY = false;
 var DEFAULT_CRAWL_EXTERNAL_DOMAINS = false;
 var DEFAULT_CRAWL_EXTERNAL_HOSTS = false;
 var DEFAULT_CRAWL_SCRIPTS = true;   // Crawl <script>
@@ -49,25 +49,26 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
  * @param config used to customize the crawler.
  *
  *  The current config attributes are :
- *  - maxConnections     : the number of connections used to crawl - default is 10
- *  - externalLinks      : if true crawl external links
- *  - externalDomains    : if true crawl the complete external domains. This option can crawl a lot of different domains
- *  - scripts            : if true crawl script tags
- *  - links              : if true crawl link tags
- *  - linkTypes          : the type of the links tags to crawl (match to the rel attribute), default : ["canonical", "stylesheet"]
- *  - images             : if true crawl images
- *  - protocols          : list of the protocols to crawl, default = ["http", "https"]
- *  - timeout            : timeout per requests in milliseconds (Default 20000)
- *  - retries            : number of retries if the request fails (default 3)
- *  - retryTimeout       : number of milliseconds to wait before retrying (Default 10000)
- *  - maxErrors          : number of timeout errors before changing the crawl rate, default is 5,
-    - errorRates         : list of rates to used when too many timeout errors occur.
- *  - skipDuplicates     : if true skips URIs that were already crawled - default is true
- *  - rateLimits         : number of milliseconds to delay between each requests (Default 0).
- *                         Note that this option will force crawler to use only one connection
- *  - depthLimit         : the depth limit for the crawl
- *  - followRedirect     : if true, the crawl will not return the 301, it will follow directly the redirection
- *  - proxyList          : the list of proxies (see the project simple-proxies on npm)
+ *  - maxConnections        : the number of connections used to crawl - default is 10
+ *  - externalDomains       : if true crawl the  external domains. This option can crawl a lot of different linked domains, default = false.
+ *  - externalHosts         : if true crawl the others hosts on the same domain, default = false.
+ *  - firstExternalLinkOnly : crawl only the first link found for external domains/hosts. externalHosts or externalDomains should be = true
+ *  - scripts               : if true crawl script tags
+ *  - links                 : if true crawl link tags
+ *  - linkTypes             : the type of the links tags to crawl (match to the rel attribute), default : ["canonical", "stylesheet"]
+ *  - images                : if true crawl images
+ *  - protocols             : list of the protocols to crawl, default = ["http", "https"]
+ *  - timeout               : timeout per requests in milliseconds (Default 20000)
+ *  - retries               : number of retries if the request fails (default 3)
+ *  - retryTimeout          : number of milliseconds to wait before retrying (Default 10000)
+ *  - maxErrors             : number of timeout errors before changing the crawl rate, default is 5,
+    - errorRates            : list of rates to used when too many timeout errors occur.
+ *  - skipDuplicates        : if true skips URIs that were already crawled - default is true
+ *  - rateLimits            : number of milliseconds to delay between each requests (Default 0).
+ *                            Note that this option will force crawler to use only one connection
+ *  - depthLimit            : the depth limit for the crawl
+ *  - followRedirect        : if true, the crawl will not return the 301, it will follow directly the redirection
+ *  - proxyList             : the list of proxies (see the project simple-proxies on npm)
  *
  *  + all options provided by nodejs request : https://github.com/request/request
  */
@@ -203,10 +204,11 @@ Crawler.prototype.buildNewOptions = function(options, newUrl) {
 
     // Copy only options attributes that are in the options used for the previous request
     // Could be more simple ? ;-)
-    o =  _.extend(o, _.pick(options, _.without(_.keys(o), "url", "uri") ));
+    o =  _.extend(o, _.pick(options, _.without(_.keys(o), "url", "uri")));
 
     //Reset setting used for retries when an error occurs like a timeout
     o.maxRetries = o.retries;
+    o.depthLimit = options.depthLimit;
 
 
     if (options.canCrawl) {
@@ -239,9 +241,9 @@ Crawler.prototype.createDefaultConfig = function(url) {
       errorRates              : DEFAULT_ERROR_RATES,
       skipDuplicates          : DEFAULT_SKIP_DUPLICATES,
       rateLimits              : DEFAULT_RATE_LIMITS,
-      externalLinks           : DEFAULT_CRAWL_EXTERNAL_LINKS,
       externalDomains         : DEFAULT_CRAWL_EXTERNAL_DOMAINS,
       externalHosts           : DEFAULT_CRAWL_EXTERNAL_HOSTS,
+      firstExternalLinkOnly   : DEFAULT_FIRST_EXTERNAL_LINK_ONLY,
       protocols               : DEFAULT_PROTOCOLS_TO_CRAWL,
       depthLimit              : DEFAULT_DEPTH_LIMIT,
       followRedirect          : DEFAULT_FOLLOW_301,
@@ -537,7 +539,6 @@ Crawler.prototype.checkUrlToCrawl = function(result, parentUri, linkUri, anchor,
                   self.httpRequester.queue(self.buildNewOptions(result,linkUri));
               }
               else {
-
                 timers.setImmediate(emitCrawlHrefEvent, self, "uncrawl", parentUri, linkUri, anchor, isDoFollow);
               }
               callback();
@@ -558,44 +559,47 @@ Crawler.prototype.checkUrlToCrawl = function(result, parentUri, linkUri, anchor,
  */
 Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri, link, anchor, isDoFollow, callback) {
 
-  store.getStore().isStartFromUrl(parentUri, function(error, startFrom){
-
+  store.getStore().isStartFromUrl(parentUri, link, function(error, startFrom){
         // 1. Check the depthLimit
         if (result.depthLimit > -1 && currentDepth > result.depthLimit) {
           return callback(null, false);
         }
 
-        // 2. Check if we need to crawl external links
-        if (URI.isExternalLink(parentUri,link) &&  ! result.externalLinks) {
-          return callback(null, false);
+        // 2. Check if we need to crawl other hosts & domains
+        if ((! startFrom.link.isStartFromHost && ! result.externalHosts) &&
+           (! (! startFrom.link.isStartFromDomains && result.externalDomains))) {
+            return callback(null, false);
         }
 
-        // 3. Check if we need to crawl others host
-        if (! startFrom.isStartFromHost && ! result.externalHosts) {
-          return callback(null, false);
+        // 3. Check if we need to crawl other hosts & domains
+        if ((! startFrom.link.isStartFromDomain && ! result.externalDomains) &&
+           (! (! startFrom.link.isStartFromHost && result.externalHosts))) {
+            return callback(null, false);
         }
 
-        // 3. Check if we need to crawl others domain
-        if (! startFrom.isStartFromDomain && ! result.externalDomains) {
-          return callback(null, false);
+        if (result.firstExternalLinkOnly &&  ((! startFrom.link.isStartFromHost) || (! startFrom.link.isStartFromDomains))) {
+
+          if (! startFrom.parentUri.isStartFromHost) {
+            return callback(null, false);
+          }
         }
 
-        // 5. Check if the link is based on a good protocol
+        // 4. Check if the link is based on a good protocol
         if (result.protocols.indexOf(URI.protocol(link)) < 0) {
           return callback(null, false);
         }
 
-        // 6. Check if the domain is in the domain black-list
+        // 5. Check if the domain is in the domain black-list
         if (result.domainBlackList.indexOf(URI.domainName(link)) > 0) {
           return callback(null, false);
         }
 
-        // 7. Check if the domain is in the suffix black-list
+        // 6. Check if the domain is in the suffix black-list
         if (result.suffixBlackList.indexOf(URI.suffix(link)) > 0) {
           return callback(null, false);
         }
 
-        // 8. Check if there is a rule in the crawler configuration
+        // 7. Check if there is a rule in the crawler configuration
         if (! result.canCrawl) {
           return callback(null, true);
         }

@@ -11,7 +11,7 @@ describe('Crawl invalid href', function() {
 
         it('Should return an error for an invalid href', function(done) {
           this.timeout(3000);
-            var c = new crawler.Crawler({externalLinks : true});
+            var c = new crawler.Crawler({externalDomains : true, externalHosts : true});
             var audit = new seoaudit.Plugin(c);
 
             c.on("end", function(){
