@@ -145,28 +145,29 @@ var c = new crawler.Crawler({
 
 ```
 
-- maxConnections     : the number of connections used to crawl, default is 10.
-- externalDomains    : if true crawl the  external domains. This option can crawl a lot of different linked domains, default = false.
-- externalHosts      : if true crawl the others hosts on the same domain, default = false.
-- scripts            : if true crawl script tags, default = true.
-- links              : if true crawl link tags, default = true.
-- linkTypes          : the type of the links tags to crawl (match to the rel attribute), default = ["canonical", "stylesheet"].
-- images             : if true crawl images, default = true.
-- protocols          : list of the protocols to crawl, default = ["http", "https"].
-- timeout            : timeout per requests in milliseconds, default = 20000.
-- retries            : number of retries if the request is on timeout, default = 3.
-- retryTimeout       : number of milliseconds to wait before retrying,  default = 10000.
-- maxErrors          : number of timeout errors before forcing  to decrease the crawl rate, default is 5. If the value is -1, there is no check.
-- errorRates         : an array of crawl rates to apply if there are no too many errors, default : [200,350,500] (in ms)
-- skipDuplicates     : if true skips URIs that were already crawled, default is true.
-- rateLimits         : number of milliseconds to delay between each requests , default = 0.
-- depthLimit         : the depth limit for the crawl, default is no limit.
-- followRedirect     : if true, the crawl will not return the 301, it will
+- maxConnections        : the number of connections used to crawl, default is 10.
+- externalDomains       : if true crawl the  external domains. This option can crawl a lot of different linked domains, default = false.
+- externalHosts         : if true crawl the others hosts on the same domain, default = false.
+- firstExternalLinkOnly : crawl only the first link found for external domains/hosts. externalHosts or externalDomains should be = true
+- scripts               : if true crawl script tags, default = true.
+- links                 : if true crawl link tags, default = true.
+- linkTypes             : the type of the links tags to crawl (match to the rel attribute), default = ["canonical", "stylesheet"].
+- images                : if true crawl images, default = true.
+- protocols             : list of the protocols to crawl, default = ["http", "https"].
+- timeout               : timeout per requests in milliseconds, default = 20000.
+- retries               : number of retries if the request is on timeout, default = 3.
+- retryTimeout          : number of milliseconds to wait before retrying,  default = 10000.
+- maxErrors             : number of timeout errors before forcing  to decrease the crawl rate, default is 5. If the value is -1, there is no check.
+- errorRates            : an array of crawl rates to apply if there are no too many errors, default : [200,350,500] (in ms)
+- skipDuplicates        : if true skips URIs that were already crawled, default is true.
+- rateLimits            : number of milliseconds to delay between each requests , default = 0.
+- depthLimit            : the depth limit for the crawl, default is no limit.
+- followRedirect        : if true, the crawl will not return the 301, it will
  follow directly the redirection, default is false.
-- userAgent          : String, defaults to "node-crawler/[version]"
-- referer            : String, if truthy sets the HTTP referer header
-- domainBlackList    : The list of domain names (without tld) to avoid to crawl (an array of String). The default list is in the file :  /default-lists/domain-black-list.js
-- proxyList          : The list of proxy to use for each crawler request (see below).
+- userAgent             : String, defaults to "node-crawler/[version]"
+- referer               : String, if truthy sets the HTTP referer header
+- domainBlackList       : The list of domain names (without tld) to avoid to crawl (an array of String). The default list is in the file :  /default-lists/domain-black-list.js
+- proxyList             : The list of proxy to use for each crawler request (see below).
 
 
 You can also use the [mikeal's request options](https://github.com/mikeal/request#requestoptions-callback) and will be directly passed to the request() method.
@@ -298,10 +299,9 @@ log.info({statusCode : 200, url: "http://www.google.com" }) // log a json
 ```javascript
 // Log into crawler.log
 var log = require("crawler-ninja/lib/logger.js");
+var myLog = log.createLogger("myLoggerName", {path : "./log-file-name.log"}););
 
-var myLog = log.createLogger("myLoggerName", "./logs/myplugin.log");
-
-myLog.log({url:"http://www.google.com", pageRank : 10});
+myLog.info({url:"http://www.google.com", pageRank : 10});
 
 ```
 
