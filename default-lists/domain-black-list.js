@@ -2,6 +2,7 @@ module.exports.list = function () {
 
   return [
     "google",
+    "picasaweb"
     "yahoo",
     "bing",
     "youtube",
