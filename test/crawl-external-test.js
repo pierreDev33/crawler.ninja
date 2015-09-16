@@ -30,7 +30,7 @@ describe('External Links', function() {
         });
 
 
-        it('Should crawl external links but not entire domains', function(done) {
+        it.skip('Should crawl external links but not entire domains', function(done) {
           this.timeout(3000);
             var c = new crawler.Crawler({externalDomains : true, firstExternalLinkOnly : true});
             var audit = new seoaudit.Plugin(c);
@@ -66,7 +66,7 @@ describe('External Links', function() {
         });
 
 
-        it.skip('Should crawl external links & external domains with a max depth of 5', function(done) {
+        it.skip('Should crawl external links & external domains with a firstExternalLinkOnly', function(done) {
             this.timeout(900000);
             var c = new crawler.Crawler({
               externalHosts : true,
