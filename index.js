@@ -9,6 +9,7 @@ var requester   = require("./lib/queue-requester");
 var URI         = require('./lib/uri.js');
 var html        = require("./lib/html.js");
 var store       = require("./lib/store/store.js");
+var log         = require("./lib/logger.js").Logger;
 
 
 var domainBlackList  = require("./default-lists/domain-black-list.js").list();
@@ -534,8 +535,7 @@ Crawler.prototype.checkUrlToCrawl = function(result, parentUri, linkUri, anchor,
               if (error) {
                 return callback(error);
               }
-
-              if(toCrawl) {
+              if (toCrawl && (result.depthLimit == -1 || currentDepth <= result.depthLimit)) {
                   self.httpRequester.queue(self.buildNewOptions(result,linkUri));
               }
               else {
@@ -560,50 +560,48 @@ Crawler.prototype.checkUrlToCrawl = function(result, parentUri, linkUri, anchor,
 Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri, link, anchor, isDoFollow, callback) {
 
   store.getStore().isStartFromUrl(parentUri, link, function(error, startFrom){
-        // 1. Check the depthLimit
-        if (result.depthLimit > -1 && currentDepth > result.depthLimit) {
-          return callback(null, false);
-        }
 
-        // 2. Check if we need to crawl other hosts & domains
+        // 1. Check if we need to crawl other hosts & domains
         if ((! startFrom.link.isStartFromHost && ! result.externalHosts) &&
            (! (! startFrom.link.isStartFromDomains && result.externalDomains))) {
+            log("Don't crawl url - no external host or domain : " + link);
             return callback(null, false);
         }
 
-        // 3. Check if we need to crawl other hosts & domains
-        if ((! startFrom.link.isStartFromDomain && ! result.externalDomains) &&
-           (! (! startFrom.link.isStartFromHost && result.externalHosts))) {
-            return callback(null, false);
-        }
-
+        // 2. Check if we need to crawl only the first pages of external hosts/domains
         if (result.firstExternalLinkOnly &&  ((! startFrom.link.isStartFromHost) || (! startFrom.link.isStartFromDomains))) {
 
           if (! startFrom.parentUri.isStartFromHost) {
+            log("Don't crawl url - no external host or domain (not the first link) : " + link);
             return callback(null, false);
           }
         }
 
-        // 4. Check if the link is based on a good protocol
+        // 3. Check if the link is based on a good protocol
         if (result.protocols.indexOf(URI.protocol(link)) < 0) {
+          log("Don't crawl url - no valid protocol : " + link);
           return callback(null, false);
         }
 
-        // 5. Check if the domain is in the domain black-list
+        // 4. Check if the domain is in the domain black-list
         if (result.domainBlackList.indexOf(URI.domainName(link)) > 0) {
+          log("Don't crawl url - domain is blacklisted : " + link);
           return callback(null, false);
         }
 
-        // 6. Check if the domain is in the suffix black-list
+        // 5. Check if the domain is in the suffix black-list
         if (result.suffixBlackList.indexOf(URI.suffix(link)) > 0) {
+          log("Don't crawl url - suffix is blacklisted : " + link);
           return callback(null, false);
         }
 
-        // 7. Check if there is a rule in the crawler configuration
+        // 6. Check if there is a rule in the crawler configuration
         if (! result.canCrawl) {
+          log(" URL can be crawled : " + link);
           return callback(null, true);
         }
-
+        log(" URL can be crawled : " + link);
+        // TODO : asynch this function ?
         var check =  result.canCrawl(parentUri, link, anchor, isDoFollow);
         return callback(null, check);
 
@@ -741,7 +739,7 @@ function emitCrawlImage(crawler, parentUri, linkUri, alt ) {
  */
 var log = function(message, options) {
 
-    //console.log(message, options);
+    console.log(message, options ? option, "");
 
     /*
     var data = {
@@ -750,7 +748,7 @@ var log = function(message, options) {
         options : options
     }
 
-    logger.info(data);
+    log.info(data);
     */
 
 
