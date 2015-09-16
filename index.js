@@ -262,7 +262,9 @@ Crawler.prototype.createDefaultConfig = function(url) {
       },
 
       onDrain : function(){
+        log("onDrain : before setImmediate");
         timers.setImmediate(function(){
+            log("onDrain : before emitEnd");
             self.emit('end');
         });
 
@@ -703,11 +705,15 @@ var saveDepths = function(depths, callback) {
 
 
 function emitCrawlEvent(crawler, result, $) {
+  log("emitCrawlEvent : before");
   crawler.emit("crawl", result, $);
+  log("emitCrawlEvent : after");
 }
 
 function emitErrorEvent(crawler, error, result) {
+  log("emitErrorEvent : before");
   crawler.emit("error", error, result);
+  log("emitErrorEvent : end");
 }
 
 function emitRedirectEvent(crawler, from, to, statusCode) {
@@ -739,7 +745,7 @@ function emitCrawlImage(crawler, parentUri, linkUri, alt ) {
  */
 var log = function(message, options) {
 
-    console.log(message, options ? option, "");
+    console.log(message, options ? option :  "");
 
     /*
     var data = {
