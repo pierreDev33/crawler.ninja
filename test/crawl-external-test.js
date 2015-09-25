@@ -13,8 +13,8 @@ describe('External Links', function() {
         it('Should not crawl external links & external domains by default', function(done) {
 
             var c = new crawler.Crawler();
-            var audit = new seoaudit.Plugin(c);
-
+            var audit = new seoaudit.Plugin();
+            c.registerPlugin(audit);
 
             c.on("end", function(){
 
@@ -33,8 +33,9 @@ describe('External Links', function() {
         it.skip('Should crawl external links but not entire domains', function(done) {
           this.timeout(3000);
             var c = new crawler.Crawler({externalDomains : true, firstExternalLinkOnly : true});
-            var audit = new seoaudit.Plugin(c);
+            var audit = new seoaudit.Plugin();
             //var log = new logger.Plugin(c);
+            c.registerPlugin(audit);
 
             c.on("end", function(){
 
@@ -51,7 +52,8 @@ describe('External Links', function() {
         it('Should not crawl domains that are in the black list', function(done) {
 
             var c = new crawler.Crawler();
-            var audit = new seoaudit.Plugin(c);
+            var audit = new seoaudit.Plugin();
+            c.registerPlugin(audit);
 
             c.on("end", function(){
 
@@ -75,7 +77,8 @@ describe('External Links', function() {
             });
 
             //var audit = new seoaudit.Plugin(c);
-            var log = new logger.Plugin(c);
+            var log = new logger.Plugin();
+            c.registerPlugin(log);
 
             c.on("end", function(){
 

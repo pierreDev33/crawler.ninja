@@ -9,7 +9,8 @@ var requester   = require("./lib/queue-requester");
 var URI         = require('./lib/uri.js');
 var html        = require("./lib/html.js");
 var store       = require("./lib/store/store.js");
-var log         = require("./lib/logger.js").Logger;
+var pm          = require("./lib/plugin-manager.js");
+var logger      = require("./lib/logger.js").Logger;
 
 
 var domainBlackList  = require("./default-lists/domain-black-list.js").list();
@@ -99,6 +100,8 @@ function Crawler(config) {
     if (this.config.updateDepth) {
       this.updateDepth = this.config.updateDepth;
     }
+
+    this.pm = new pm.PluginManager();
 
     this.httpRequester = new requester.Requester(this.config);
 
@@ -262,9 +265,8 @@ Crawler.prototype.createDefaultConfig = function(url) {
       },
 
       onDrain : function(){
-        log("onDrain : before setImmediate");
         timers.setImmediate(function(){
-            log("onDrain : before emitEnd");
+            log("End of the crawl");
             self.emit('end');
         });
 
@@ -292,19 +294,17 @@ Crawler.prototype.crawl = function (error, result, callback) {
 
     var self = this;
 
-    // if HTTP error, emit an error event to the plugins
+    // if HTTP error, delegate to the plugins
     if (error) {
-        timers.setImmediate(emitErrorEvent, self, error, result);
-        return callback();
+        this.pm.error(error,result, callback);
+        return;
     }
     var $ = html.isHTML(result.body) ? html.$(result.body) : null;
-
-    // No error => emit a crawl event to the plugins
-    timers.setImmediate(emitCrawlEvent, self,result, $);
 
     // Analyse the HTTP response in order to check the content (links, images, ...)
     // or apply a redirect
     async.parallel([
+      async.apply(self.pm.crawl.bind(this.pm),result, $),
       async.apply(self.analyzeHTML.bind(self), result, $),
       async.apply(self.applyRedirect.bind(self), result),
     ], callback);
@@ -319,14 +319,17 @@ Crawler.prototype.applyRedirect = function(result, callback) {
       var from = result.uri;
       var to = result.headers["location"];
       var to = URI.linkToURI(from, to);
-
-      // Emit a redirect event to the plugins
-      timers.setImmediate(emitRedirectEvent, this, from, to, result.statusCode);
-
-      this.httpRequester.queue(this.buildNewOptions(result,to));
+      var self = this;
+      this.pm.crawlRedirect(from, to, result.statusCode, function(){
+        self.httpRequester.queue(self.buildNewOptions(result,to));
+        callback();
+      });
+  }
+  else {
+      callback();
   }
 
-  callback();
+
 }
 
 /**
@@ -367,7 +370,7 @@ Crawler.prototype.analyzeHTML = function(result, $, callback) {
  */
 Crawler.prototype.crawlHrefs = function(result, $, endCallback) {
 
-    log("CrawHrefs : " + result.url);
+    log("CrawlHrefs : " + result.url);
     var self = this;
     async.each($('a'), function(a, callback) {
         self.crawlHref($, result, a, callback);
@@ -387,9 +390,10 @@ Crawler.prototype.crawlHref = function($,result, a, callback) {
 
         var linkUri = URI.linkToURI(parentUri, link);
 
-        timers.setImmediate(emitCrawlHrefEvent, this, "crawlLink", parentUri, linkUri, anchor, isDoFollow);
-        this.checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, callback);
-
+        var self = this;
+        this.pm.crawlLink(parentUri, linkUri, anchor, isDoFollow, function(){
+          self.checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, callback);
+        });
 
       }
       else {
@@ -412,7 +416,7 @@ Crawler.prototype.crawlLinks = function(result, $, endCallback) {
         return endCallback();
     }
 
-    log("CrawlLinks : " + result.url);
+    log("CrawlLLinks : " + result.url);
     var self = this;
 
     async.each($('link'), function(linkTag, callback) {
@@ -430,14 +434,14 @@ Crawler.prototype.crawLink = function($,result,linkTag, callback) {
 
           if (this.config.linkTypes.indexOf(rel) > 0) {
               var linkUri = URI.linkToURI(parentUri, link);
-              timers.setImmediate(emitCrawlLinkEvent, this, parentUri, linkUri);
-              this.checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
-
+              var self = this;
+              this.pm.crawlLink(parentUri, linkUri, null, null, function(){
+                self.checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
+              });
           }
           else {
             callback();
           }
-
       }
       else {
         callback();
@@ -472,8 +476,10 @@ Crawler.prototype.crawlScript = function($,result, script, callback) {
 
     if (link) {
           var linkUri = URI.linkToURI(parentUri, link);
-          timers.setImmediate(emitCrawlLinkEvent, this, parentUri, linkUri);
-          this.checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
+          var self = this;
+          this.pm.crawlLink(parentUri, linkUri, null, null, function(){
+            self.checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
+          });
 
     }
     else {
@@ -512,8 +518,10 @@ Crawler.prototype.crawlImage = function($,result, img, callback) {
       if (link) {
           var linkUri = URI.linkToURI(parentUri, link);
           log("Found image on " + parentUri + " : " + linkUri);
-          timers.setImmediate(emitCrawlImage, this, parentUri, linkUri, alt);
-          this.checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
+          var self = this;
+          this.pm.crawlImage(parentUri, linkUri, alt, function(){
+            self.checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
+          });
 
       }
       else {
@@ -539,11 +547,12 @@ Crawler.prototype.checkUrlToCrawl = function(result, parentUri, linkUri, anchor,
               }
               if (toCrawl && (result.depthLimit == -1 || currentDepth <= result.depthLimit)) {
                   self.httpRequester.queue(self.buildNewOptions(result,linkUri));
+                  callback();
               }
               else {
-                timers.setImmediate(emitCrawlHrefEvent, self, "uncrawl", parentUri, linkUri, anchor, isDoFollow);
+                self.pm.unCrawl(parentUri, linkUri, anchor, isDoFollow, callback);
               }
-              callback();
+
           });
 
         }
@@ -611,6 +620,14 @@ Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri,
 
 }
 
+Crawler.prototype.registerPlugin = function (plugin) {
+    this.pm.registerPlugin(plugin);
+}
+
+Crawler.prototype.unregisterPlugin = function (plugin) {
+    this.pm.unregisterPlugin(plugin);
+}
+
 /**
  * Compute the crawl depth for a link in function of the crawl depth
  * of the page that contains the link
@@ -623,8 +640,6 @@ Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri,
 var updateDepth = function(parentUri, linkUri, callback) {
 
     var depths = {parentUri : parentUri, linkUri : linkUri, parentDepth : 0, linkDepth : 0};
-
-
     var execFns = async.seq(getDepths , calcultateDepths , saveDepths);
 
     execFns(depths, function (error, result) {
@@ -703,39 +718,6 @@ var saveDepths = function(depths, callback) {
   });
 }
 
-
-function emitCrawlEvent(crawler, result, $) {
-  log("emitCrawlEvent : before");
-  crawler.emit("crawl", result, $);
-  log("emitCrawlEvent : after");
-}
-
-function emitErrorEvent(crawler, error, result) {
-  log("emitErrorEvent : before");
-  crawler.emit("error", error, result);
-  log("emitErrorEvent : end");
-}
-
-function emitRedirectEvent(crawler, from, to, statusCode) {
-  crawler.emit("crawlRedirect", from, to, statusCode);
-}
-
-function emitCrawlHrefEvent(crawler, eventName, parentUri, linkUri, anchor, isDoFollow) {
-  crawler.emit(eventName, parentUri, linkUri, anchor, isDoFollow);
-}
-
-function emitCrawlLinkEvent(crawler, parentUri, linkUri ) {
-  crawler.emit("crawlLink", parentUri, linkUri);
-}
-
-function emitUnCrawlEvent(crawler, parentUri, linkUri ) {
-  crawler.emit("uncrawl", parentUri, linkUri);
-}
-
-function emitCrawlImage(crawler, parentUri, linkUri, alt ) {
-  crawler.emit("crawlImage", parentUri, linkUri, alt);
-}
-
  /**
  * Log method
  *
@@ -745,18 +727,15 @@ function emitCrawlImage(crawler, parentUri, linkUri, alt ) {
  */
 var log = function(message, options) {
 
-    console.log(message, options ? option :  "");
-
-    /*
+    //console.log(message, options ? options :  "");
     var data = {
-        step    : "request-queue",
-        message : message,
-        options : options
+        step    : "plugin-manager",
+        message : message
     }
-
-    log.info(data);
-    */
-
+    if (options) {
+      data.options = options;
+    }
+    logger.info(data);
 
 }
 

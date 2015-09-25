@@ -21,29 +21,25 @@ function Plugin(crawler) {
         errors : []              // List of the errors
 
     };
-
-    var self = this;
-
-    this.crawler.on("crawl", function(result,$) {
-          self.crawl(result,$);
-    });
-
-    this.crawler.on("uncrawl", function(parentUri, linkUri, anchor, isDoFollow) {
-          self.data.numberOfUncrawlUrls++;
-    });
-
-    this.crawler.on("error", function(error, uri) {
-       error.push(error);
-    });
-
-
 }
+
+Plugin.prototype.unCrawl = function(parentUri, linkUri, anchor, isDoFollow, callback) {
+      this.data.numberOfUncrawlUrls++;
+      callback();
+};
+
+Plugin.prototype.error = function(error, result, callback) {
+       error.push(error);
+       callback();
+};
+
+
 
 /**
  * callback function for the event crawl
  *
  */
-Plugin.prototype.crawl = function(result, $) {
+Plugin.prototype.crawl = function(result, $, callback) {
 
     this.data.numberOfUrls++;
 
@@ -60,6 +56,7 @@ Plugin.prototype.crawl = function(result, $) {
         this.data.numberOfHTMLs++;
     }
 
+    callback();
 
 }
 

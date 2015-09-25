@@ -8,9 +8,10 @@ function Plugin(crawler) {
    this.crawler = crawler;
 
 
-   var self = this;
+}
 
-   this.crawler.on("crawl", function(result, $) {
+Plugin.prototype.crawl = function(result, $, callback) {
+
       var data = {
           statusCode    : result.statusCode,
           method        : result.method,
@@ -20,11 +21,10 @@ function Plugin(crawler) {
           error         : false
       }
       log.info(data);
+      callback();
+}
 
-
-   });
-
-   this.crawler.on("error", function(error, result) {
+Plugin.prototype.error = function(error, result, callback) {
 
      var data = {
        errorCode     : error.code,
@@ -35,16 +35,10 @@ function Plugin(crawler) {
      }
 
      log.error(data);
+     callback();
 
-   });
+}
 
-   this.crawler.on("end", function() {
-
-     log.info({message : "End of the crawl"});
-
-   });
-
- }
 
 
 module.exports.Plugin = Plugin;

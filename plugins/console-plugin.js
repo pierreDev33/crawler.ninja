@@ -4,31 +4,25 @@
  */
 
 function Plugin(crawler) {
-   this.crawler = crawler;
+
+  this.name = "Console-Plugin";
+
+}
 
 
-   var self = this;
-
-   this.crawler.on("crawl", function(result, $) {
+Plugin.prototype.crawl = function(result, $, callback) {
       console.log(result.statusCode + ',' + result.method + ',' +
                   result.uri + ',' + result.responseTime + ',' + (result.proxy ? result.proxy : "no-proxy") );
-   });
+      callback();
+}
 
-   this.crawler.on("error", function(error, result) {
+Plugin.prototype.error = function(error, result, callback) {
 
      console.log("Error : " + error.code + ',' + + result.method + ',' +
                  result.uri + ',' + result.responseTime + ',' + (result.proxy ? result.proxy : "no-proy"));
+     callback();
 
-   });
-
-
-   this.crawler.on("end", function() {
-
-     console.log("End of the crawl");
-
-   });
-
- }
+};
 
 
 module.exports.Plugin = Plugin;

@@ -13,6 +13,7 @@ describe('Crawl invalid href', function() {
           this.timeout(3000);
             var c = new crawler.Crawler({externalDomains : true, externalHosts : true});
             var audit = new seoaudit.Plugin(c);
+            c.registerPlugin(audit);
 
             c.on("end", function(){
                 //console.log(audit.resources.keys());

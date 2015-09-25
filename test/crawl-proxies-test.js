@@ -33,16 +33,24 @@ describe('Proxies', function() {
         it('should execute the request with a proxy', function(done) {
 
             var c = new crawler.Crawler({proxyList : proxyList});
+            c.registerPlugin({
+                  error : function (error, result, callback) {
+                          assert(_.find(result.proxyList.getProxies(), function(p){ return p.getUrl()=== result.proxy; }));
+                          callback();
+                  }
+            });
+
 
             c.on("end", function(){
                 done();
             });
 
+            /*
             c.on("error", function(error, result) {
                assert(_.find(result.proxyList.getProxies(), function(p){ return p.getUrl()=== result.proxy; }));
 
             });
-
+            */
             c.queue({url : "http://localhost:9999/internal-links.html"});
 
         });

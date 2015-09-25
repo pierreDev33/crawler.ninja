@@ -14,7 +14,8 @@ describe('Stat Plugin', function() {
         it('should return only one page stat', function(done) {
 
             var c = new crawler.Crawler();
-            var stat = new memstat.Plugin(c);
+            var stat = new memstat.Plugin();
+            c.registerPlugin(stat);
 
             c.on("end", function(){
 
@@ -34,7 +35,8 @@ describe('Stat Plugin', function() {
         it('should return only one page stat for an HTML page without tag', function(done) {
 
             var c = new crawler.Crawler();
-            var stat = new memstat.Plugin(c);
+            var stat = new memstat.Plugin();
+            c.registerPlugin(stat);
 
             c.on("end", function(){
 
@@ -53,8 +55,8 @@ describe('Stat Plugin', function() {
         it('should return only one page stat for a text page', function(done) {
 
             var c = new crawler.Crawler();
-            var stat = new memstat.Plugin(c);
-
+            var stat = new memstat.Plugin();
+            c.registerPlugin(stat);
             c.on("end", function(){
 
                 assert(stat.data.numberOfUrls == 1, "Incorrect number of crawled urls : " + stat.data.numberOfUrls);
@@ -71,8 +73,8 @@ describe('Stat Plugin', function() {
         it('should return only internal pages stat', function(done) {
 
             var c = new crawler.Crawler();
-            var stat = new memstat.Plugin(c);
-            //var log = new logger.Plugin(c);
+            var stat = new memstat.Plugin();
+            c.registerPlugin(stat);
 
             c.on("end", function(){
 
@@ -91,7 +93,8 @@ describe('Stat Plugin', function() {
         it('should return 1 internal pages stat for a depthLimit = 0', function(done) {
 
             var c = new crawler.Crawler({depthLimit : 0});
-            var stat = new memstat.Plugin(c);
+            var stat = new memstat.Plugin();
+            c.registerPlugin(stat);
             //var log = new logger.Plugin(c);
 
             c.on("end", function(){
@@ -110,7 +113,8 @@ describe('Stat Plugin', function() {
         it('should return 4 internal pages stat for a depthLimit = 1', function(done) {
 
             var c = new crawler.Crawler({depthLimit : 1});
-            var stat = new memstat.Plugin(c);
+            var stat = new memstat.Plugin();
+            c.registerPlugin(stat);
             //var log = new logger.Plugin(c);
 
             c.on("end", function(){
@@ -129,7 +133,8 @@ describe('Stat Plugin', function() {
         it('should return only dofollow pages stat', function(done) {
 
             var c = createCrawlerWithCondition();
-            var stat = new memstat.Plugin(c);
+            var stat = new memstat.Plugin();
+            c.registerPlugin(stat);
             //var log = new logger.Plugin(c);
 
             c.on("end", function(){

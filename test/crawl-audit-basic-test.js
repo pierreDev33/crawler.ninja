@@ -14,7 +14,8 @@ describe('Audit Plugin Basic tests', function() {
         it('Should return an error for an invalid site', function(done) {
 
             var c = new crawler.Crawler();
-            var audit = new seoaudit.Plugin(c);
+            var audit = new seoaudit.Plugin();
+            c.registerPlugin(audit);
 
             c.on("end", function(){
 
@@ -30,7 +31,8 @@ describe('Audit Plugin Basic tests', function() {
         it('Should return the redirect info for 301', function(done) {
 
             var c = new crawler.Crawler();
-            var audit = new seoaudit.Plugin(c);
+            var audit = new seoaudit.Plugin();
+            c.registerPlugin(audit);
 
             c.on("end", function(){
 
@@ -50,7 +52,8 @@ describe('Audit Plugin Basic tests', function() {
         it('Should return the redirect chain info for a series of 301', function(done) {
 
             var c = new crawler.Crawler();
-            var audit = new seoaudit.Plugin(c);
+            var audit = new seoaudit.Plugin();
+            c.registerPlugin(audit);
             //var log = new logger.Plugin(c);
 
             c.on("end", function(){
@@ -78,7 +81,8 @@ describe('Audit Plugin Basic tests', function() {
         it('Should return only the latest url after a 301 chain with the option followRedirect = true', function(done) {
 
             var c = new crawler.Crawler({followRedirect : true});
-            var audit = new seoaudit.Plugin(c);
+            var audit = new seoaudit.Plugin();
+            c.registerPlugin(audit);
 
             c.on("end", function(){
 
@@ -98,11 +102,13 @@ describe('Audit Plugin Basic tests', function() {
         it('Should crawl images', function(done) {
 
             var c = new crawler.Crawler();
-            var audit = new seoaudit.Plugin(c);
-            var log = new logger.Plugin(c);
+            var audit = new seoaudit.Plugin();
+            //var log = new logger.Plugin();
+            c.registerPlugin(audit);
+            //c.registerPlugin(log);
 
             c.on("end", function(){
-
+                //console.log("Unit test : end");
                 var resource = audit.resources.get("http://localhost:9999/200x200-image.jpg");
                 assert(resource.contentType =='image/jpeg');
 
@@ -117,8 +123,8 @@ describe('Audit Plugin Basic tests', function() {
         it('Should crawl 404 urls', function(done) {
 
             var c = new crawler.Crawler();
-            var audit = new seoaudit.Plugin(c);
-            //var log = new logger.Plugin(c);
+            var audit = new seoaudit.Plugin();
+            c.registerPlugin(audit);
 
             c.on("end", function(){
 
@@ -140,8 +146,8 @@ describe('Audit Plugin Basic tests', function() {
         it('Should crawl 500 urls', function(done) {
 
             var c = new crawler.Crawler();
-            var audit = new seoaudit.Plugin(c);
-            var log = new logger.Plugin(c);
+            var audit = new seoaudit.Plugin();
+            c.registerPlugin(audit);
 
             c.on("end", function(){
 
@@ -163,8 +169,8 @@ describe('Audit Plugin Basic tests', function() {
         it('Should crawl even with timout', function(done) {
             this.timeout(5000);
             var c = new crawler.Crawler({timeout: 50, maxErrors:-1, retries:1, retryTimeout:5 });
-            var audit = new seoaudit.Plugin(c);
-            var log = new logger.Plugin(c);
+            var audit = new seoaudit.Plugin();
+            c.registerPlugin(audit);
 
             c.on("end", function(){
 
@@ -187,8 +193,8 @@ describe('Audit Plugin Basic tests', function() {
         it('Should crawl even with timout with retries', function(done) {
             this.timeout(10000);
             var c = new crawler.Crawler({timeout: 50, retries : 3, retryTimeout : 500});
-            var audit = new seoaudit.Plugin(c);
-            var log = new logger.Plugin(c);
+            var audit = new seoaudit.Plugin();
+            c.registerPlugin(audit);
 
             c.on("end", function(){
 
@@ -231,8 +237,8 @@ describe('Audit Plugin Basic tests', function() {
         it('Should crawl even with dns error', function(done) {
 
             var c = new crawler.Crawler({externalDomains : true});
-            var audit = new seoaudit.Plugin(c);
-            //var log = new logger.Plugin(c);
+            var audit = new seoaudit.Plugin();
+            c.registerPlugin(audit);
 
             c.on("end", function(){
 

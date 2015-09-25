@@ -16,10 +16,9 @@ var STATUS_DNS_LOOKUP_ERROR = "DNS lookup failed";
  *
  *  @param : the crawler engine that will emit events to this plugin
  */
-function Plugin(crawler) {
+function Plugin() {
 
-    this.crawler = crawler;
-
+    this.name = "Audit-Plugin";
     this.resources = new Map();
     this.duplicateContents = new Map();
     this.inLinks = new Map();
@@ -30,44 +29,23 @@ function Plugin(crawler) {
     this.errors = new Set();
     this.redirects = new Map();
 
-    var self = this;
 
-    this.crawler.on("error", function(error, result){
+}
 
-
-        self.errors.add({uri : result.uri, error : error});
+Plugin.prototype.error = function (error, result, callback) {
+        this.errors.add({uri : result.uri, error : error});
         if (error.code == ERROR_CODE_TIMEOUT) {
-          var resourceInfo = self.getresourceInfo(result.uri);
+          var resourceInfo = this.getresourceInfo(result.uri);
           resourceInfo.statusCode = 408;
         }
         if (error.code == ERROR_DNS_LOOKUP) {
-          var resourceInfo = self.getresourceInfo(result.uri);
+          var resourceInfo = this.getresourceInfo(result.uri);
           resourceInfo.statusCode = STATUS_DNS_LOOKUP_ERROR;
         }
 
-    });
-
-    this.crawler.on("crawl", function(result,$) {
-          self.crawl(result,$);
-    }) ;
-
-    this.crawler.on("crawlLink", function(page, link, anchor, isDoFollow) {
-
-          self.crawlLink(page, link, anchor, isDoFollow);
-    });
-
-
-    this.crawler.on("crawlImage", function(page, link, alt) {
-
-          self.crawlImage(page, link, alt);
-    });
-
-
-    this.crawler.on("crawlRedirect", function(from, to, statusCode) {
-          self.crawlRedirect(from, to, statusCode);
-    });
-
+        callback();
 }
+
 
 /**
  * callback function for the event crawl
@@ -77,7 +55,7 @@ function Plugin(crawler) {
  *        is not an HTML
  *
  */
-Plugin.prototype.crawl = function(result, $) {
+Plugin.prototype.crawl = function(result, $, callback) {
 
       //http status 2**
       if (result.statusCode >= 200  &&  result.statusCode <= 299 ) {
@@ -96,6 +74,8 @@ Plugin.prototype.crawl = function(result, $) {
 
           this.analyzeHttpError(result);
       }
+
+      callback();
 
 
 }
@@ -204,7 +184,7 @@ Plugin.prototype.analyzeHttpError = function(result) {
  * @param true if the link is on follow
  * @returns
  */
-Plugin.prototype.crawlLink = function(page, link, anchor, isDoFollow) {
+Plugin.prototype.crawlLink = function(page, link, anchor, isDoFollow, callback) {
 
     // Outlinks
     addToListMap(this.outLinks, page, {page: link, anchor : anchor, isDoFollow : isDoFollow});
@@ -218,6 +198,8 @@ Plugin.prototype.crawlLink = function(page, link, anchor, isDoFollow) {
         addToListMap(this.externalLinks, link, page);
     }
 
+    callback();
+
 }
 
 /**
@@ -230,7 +212,7 @@ Plugin.prototype.crawlLink = function(page, link, anchor, isDoFollow) {
  * @param true if the link is on follow
  *
  */
-Plugin.prototype.crawlImage = function(page, link, alt) {
+Plugin.prototype.crawlImage = function(page, link, alt, callback) {
 
     // Outlinks
     addToListMap(this.outLinks, page, {page: link, anchor : alt, isDoFollow : null});
@@ -239,6 +221,8 @@ Plugin.prototype.crawlImage = function(page, link, alt) {
     if (URI.host(page) == URI.host(link)) {
       addToListMap(this.images, link, {page: page, alt : alt});
     }
+
+    callback();
 
 }
 
@@ -249,8 +233,9 @@ Plugin.prototype.crawlImage = function(page, link, alt) {
  * @param the to url
  *
  */
-Plugin.prototype.crawlRedirect = function(from, to, statusCode) {
+Plugin.prototype.crawlRedirect = function(from, to, statusCode, callback) {
     this.redirects.set(from, {'to': to, 'statusCode' : statusCode});
+    callback();
 }
 
 

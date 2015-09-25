@@ -14,8 +14,10 @@ describe('Audit Plugin', function() {
         it('Audit a mini site - all links images ', function(done) {
 
             var c = new crawler.Crawler();
-            var audit = new seoaudit.Plugin(c);
-            var log = new logger.Plugin(c);
+            var audit = new seoaudit.Plugin();
+            var log = new logger.Plugin();
+            c.registerPlugin(audit);
+            c.registerPlugin(log);
 
             c.on("end", function() {
 
@@ -63,9 +65,10 @@ describe('Audit Plugin', function() {
 
         it('Audit a mini site - crawl only a.href links ', function(done) {
             var c = new crawler.Crawler({images : false, links: false /*links = html link tag*/, scripts:false });
-            var audit = new seoaudit.Plugin(c);
-            //var log = new logger.Plugin(c);
-
+            var audit = new seoaudit.Plugin();
+            //var log = new logger.Plugin();
+            c.registerPlugin(audit);
+            
             c.on("end", function() {
                 //console.log(audit.resources.keys());
                 assert(audit.resources.keys().length == 9);

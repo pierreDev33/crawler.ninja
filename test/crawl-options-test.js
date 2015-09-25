@@ -11,7 +11,8 @@ describe('Crawl Option tests', function() {
         it('Should returns an error for an empty options', function(done) {
 
             var c = new crawler.Crawler();
-            var a = new audit.Plugin(c);
+            var a = new audit.Plugin();
+            c.registerPlugin(a);
 
             c.on("end", function(){
 
@@ -27,7 +28,8 @@ describe('Crawl Option tests', function() {
         it('Should returns a ressource with an option as a String', function(done) {
 
             var c = new crawler.Crawler();
-            var a = new audit.Plugin(c);
+            var a = new audit.Plugin();
+            c.registerPlugin(a);
 
             //var l = new logger.Plugin(c);
 
@@ -45,7 +47,8 @@ describe('Crawl Option tests', function() {
         it('Should returns a ressource with an option as a json object', function(done) {
 
             var c = new crawler.Crawler();
-            var a = new audit.Plugin(c);
+            var a = new audit.Plugin();
+            c.registerPlugin(a);
 
             //var l = new logger.Plugin(c);
 
@@ -63,7 +66,8 @@ describe('Crawl Option tests', function() {
         it('Should returns an error for an options without url ', function(done) {
 
             var c = new crawler.Crawler();
-            var a = new audit.Plugin(c);
+            var a = new audit.Plugin();
+            c.registerPlugin(a);
 
             c.on("end", function(){
 
@@ -79,7 +83,8 @@ describe('Crawl Option tests', function() {
         it('Should returns a ressource with an option as a Array', function(done) {
 
             var c = new crawler.Crawler();
-            var a = new audit.Plugin(c);
+            var a = new audit.Plugin();
+            c.registerPlugin(a);
 
             //var l = new logger.Plugin(c);
 
@@ -99,9 +104,10 @@ describe('Crawl Option tests', function() {
         it('Should use the custom options for all upcoming requests', function(done) {
 
             var c = new crawler.Crawler();
-            var a = new audit.Plugin(c);
-            var l = new logger.Plugin(c);
-
+            var a = new audit.Plugin();
+            //var l = new logger.Plugin();
+            c.registerPlugin(a);
+            
             var ok = false;
 
             c.on("end", function(){
