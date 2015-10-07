@@ -2,7 +2,7 @@
  * This is a simple plugin which log the crawled urls
  *
  */
-var log = require("../lib/logger.js").Logger;
+var log = require("crawler-ninja-logger").Logger;
 
 function Plugin(crawler) {
    this.crawler = crawler;

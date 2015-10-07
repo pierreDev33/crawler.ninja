@@ -3,6 +3,7 @@ var timers      = require('timers');
 var util        = require("util");
 var _           = require("underscore");
 var async       = require('async');
+var log         = require("crawler-ninja-logger").Logger;
 var Map         = require("collections/fast-map");
 var Set         = require("collections/fast-set");
 var requester   = require("./lib/queue-requester");
@@ -10,7 +11,7 @@ var URI         = require('./lib/uri.js');
 var html        = require("./lib/html.js");
 var store       = require("./lib/store/store.js");
 var pm          = require("./lib/plugin-manager.js");
-var logger      = require("./lib/logger.js").Logger;
+
 
 
 var domainBlackList  = require("./default-lists/domain-black-list.js").list();
@@ -266,7 +267,7 @@ Crawler.prototype.createDefaultConfig = function(url) {
 
       onDrain : function(){
         timers.setImmediate(function(){
-            log("End of the crawl");
+            log.debug({ "step" : "onDrain", "message" : "End of the crawl"});
             self.emit('end');
         });
 
@@ -346,7 +347,7 @@ Crawler.prototype.analyzeHTML = function(result, $, callback) {
     return callback();
   }
 
-  log("Analyze HTML page : " + result.url);
+  log.debug({"url" : result.url, "step" : "analyzeHTML", "message" : "Start check HTML code"});
   var self = this;
 
   async.parallel([
@@ -370,7 +371,7 @@ Crawler.prototype.analyzeHTML = function(result, $, callback) {
  */
 Crawler.prototype.crawlHrefs = function(result, $, endCallback) {
 
-    log("CrawlHrefs : " + result.url);
+    log.debug({"url" : result.url, "step" : "analyzeHTML", "message" : "CrawlHrefs"});
     var self = this;
     async.each($('a'), function(a, callback) {
         self.crawlHref($, result, a, callback);
@@ -416,7 +417,7 @@ Crawler.prototype.crawlLinks = function(result, $, endCallback) {
         return endCallback();
     }
 
-    log("CrawlLLinks : " + result.url);
+    log.debug({"url" : result.url, "step" : "analyzeHTML", "message" : "CrawlLinks"});
     var self = this;
 
     async.each($('link'), function(linkTag, callback) {
@@ -461,7 +462,7 @@ Crawler.prototype.crawlScripts = function(result, $, endCallback) {
       return endCallback();
     }
 
-    log("CrawlScripts : " + result.url);
+    log.debug({"url" : result.url, "step" : "analyzeHTML", "message" : "CrawlScripts"});
     var self = this;
 
     async.each($('script'), function(script, callback) {
@@ -502,7 +503,7 @@ Crawler.prototype.crawlImages = function(result, $, endCallback) {
       return endCallback();
     }
 
-    log("CrawlImages : " + result.url);
+    log.debug({"url" : result.url, "step" : "analyzeHTML", "message" : "CrawlImages"});
     var self = this;
 
     async.each($('img'), function(img, callback) {
@@ -517,7 +518,6 @@ Crawler.prototype.crawlImage = function($,result, img, callback) {
       var alt = $(img).attr('alt');
       if (link) {
           var linkUri = URI.linkToURI(parentUri, link);
-          log("Found image on " + parentUri + " : " + linkUri);
           var self = this;
           this.pm.crawlImage(parentUri, linkUri, alt, function(){
             self.checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
@@ -575,7 +575,7 @@ Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri,
         // 1. Check if we need to crawl other hosts & domains
         if ((! startFrom.link.isStartFromHost && ! result.externalHosts) &&
            (! (! startFrom.link.isStartFromDomains && result.externalDomains))) {
-            log("Don't crawl url - no external host or domain : " + link);
+            log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - no external host or domain"});
             return callback(null, false);
         }
 
@@ -583,37 +583,39 @@ Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri,
         if (result.firstExternalLinkOnly &&  ((! startFrom.link.isStartFromHost) || (! startFrom.link.isStartFromDomains))) {
 
           if (! startFrom.parentUri.isStartFromHost) {
-            log("Don't crawl url - no external host or domain (not the first link) : " + link);
+            log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - no external host or domain (not the first link)"});
             return callback(null, false);
           }
         }
 
         // 3. Check if the link is based on a good protocol
-        if (result.protocols.indexOf(URI.protocol(link)) < 0) {
-          log("Don't crawl url - no valid protocol : " + link);
+        var protocol = URI.protocol(link);
+        if (result.protocols.indexOf(protocol) < 0) {
+          log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - no valid protocol : " + protocol});
           return callback(null, false);
         }
 
         // 4. Check if the domain is in the domain black-list
         if (result.domainBlackList.indexOf(URI.domainName(link)) > 0) {
-          log("Don't crawl url - domain is blacklisted : " + link);
+          log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - domain is blacklisted" });
           return callback(null, false);
         }
 
         // 5. Check if the domain is in the suffix black-list
-        if (result.suffixBlackList.indexOf(URI.suffix(link)) > 0) {
-          log("Don't crawl url - suffix is blacklisted : " + link);
+        var suffix = URI.suffix(link);
+        if (result.suffixBlackList.indexOf(suffix) > 0) {
+          log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - suffix is blacklisted"});
           return callback(null, false);
         }
 
         // 6. Check if there is a rule in the crawler configuration
         if (! result.canCrawl) {
-          log(" URL can be crawled : " + link);
+          log.info({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "URL can be crawled"});
           return callback(null, true);
         }
-        log(" URL can be crawled : " + link);
         // TODO : asynch this function ?
         var check =  result.canCrawl(parentUri, link, anchor, isDoFollow);
+        log.debug({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "method options.canCrawl has been called and return "} + check);
         return callback(null, check);
 
   });
@@ -717,27 +719,5 @@ var saveDepths = function(depths, callback) {
       callback(error, depths);
   });
 }
-
- /**
- * Log method
- *
- *
- * @param the message to log
- * @param the crawl option (can be optional)
- */
-var log = function(message, options) {
-
-    //console.log(message, options ? options :  "");
-    var data = {
-        step    : "plugin-manager",
-        message : message
-    }
-    if (options) {
-      data.options = options;
-    }
-    logger.info(data);
-
-}
-
 
 module.exports.Crawler = Crawler;
