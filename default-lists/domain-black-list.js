@@ -1,6 +1,8 @@
 module.exports.list = function () {
 
   return [
+    "microsoft.com",
+    "mozilla.net",
     "google",
     "picasaweb",
     "yahoo",

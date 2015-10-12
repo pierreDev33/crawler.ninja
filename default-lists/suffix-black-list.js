@@ -2,6 +2,7 @@
 module.exports.list = function () {
 
   return [
+    "xml",
     "atom",
     "rss",
     "mml",
