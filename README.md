@@ -459,3 +459,15 @@ ChangeLog
 - Bug fix : newest Bunyan version doesn't create the log dir.
 - Manage more request errors type (with or without retries)
 - Add a suffix black list in order to exclude the crawl with a specific suffix (extention) like .pdf,.docx, ...
+
+0.1.10
+- Use callbacks instead of events for the plugin management
+
+0.1.11
+- Externalize the log mechanism into the module crawler-ninja-logger
+
+0.1.12
+- Review black lists (domains & suffixs)
+- Review README
+- Bug fixs
+- Add an empty plugin sample. See the js file : /plugins/empty-plugin.js
