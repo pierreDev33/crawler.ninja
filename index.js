@@ -18,7 +18,7 @@ var domainBlackList  = require("./default-lists/domain-black-list.js").list();
 var suffixBlackList  = require("./default-lists/suffix-black-list.js").list();
 
 
-var DEFAULT_NUMBER_OF_CONNECTIONS = 10;
+var DEFAULT_NUMBER_OF_CONNECTIONS = 30;
 var DEFAULT_DEPTH_LIMIT = -1; // no limit
 var DEFAULT_TIME_OUT = 20000;
 var DEFAULT_RETRIES = 3;
