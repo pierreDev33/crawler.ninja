@@ -23,104 +23,119 @@ Crash course
 
 ```javascript
 var crawler = require("crawler-ninja");
-var logger  = require("crawler-ninja/plugins/log-plugin");
+var cs      = require("crawler-ninja/plugins/console-plugin");
 
 var c = new crawler.Crawler();
-var log = new logger.Plugin(c);
+var consolePlugin = new cs.Plugin();
+c.registerPlugin(consolePlugin);
 
 c.on("end", function() {
 
     var end = new Date();
-    console.log("End of crawl !, done in : " + (end - start));
+    console.log("End of crawl !");
 
 
 });
 
-var start = new Date();
 c.queue({url : "http://www.mysite.com/"});
 ```
-This script logs on the console all crawled pages thanks to the usage of the log-plugin component.
+This script logs on the console all crawled pages thanks to the usage of the console-plugin component.
 
-The Crawler component emits different kind of events that plugins can use (see below).
+The Crawler calls plugin functions in function of what kind of object is crawling (html pages, css, script, links, redirection, ...).
 When the crawl ends, the event 'end' is emitted.
 
 ###Create a new plugin
 
 The following script show you the events callbacks that your have to implement for creating a new plugin.
 
-This is not mandatory to implement all crawler events. You can also reduce the scope of the crawl by using the different crawl options (see below the section :  option references).
+This is not mandatory to implement all plugin functions. You can also reduce the scope of the crawl by using the different crawl options (see below the section :  option references).
 
 
 ```javascript
-
-// userfull lib for managing uri
-var URI    = require('crawler/lib/uri');
+function Plugin() {
 
 
-function Plugin(crawler) {
+}
 
-    this.crawler = crawler;
+/**
+ * Function triggers when an Http error occurs for request made by the crawler
+ *
+ * @param the http error
+ * @param the http resource object (contains the uri of the resource)
+ * @param callback(error)
+ */
+Plugin.prototype.error = function (error, result, callback) {
 
-    /**
-     * Emits when the crawler found an error
-     *
-     * @param the usual error object
-     * @param the result of the request (contains uri, headers, ...)
-     */
-    this.crawler.on("error", function(error, result) {
+}
 
-    });
+/**
+ * Function triggers when an html resource is crawled
+ *
+ * @param result : the result of the resource crawl
+ * @param the jquery like object for accessing to the HTML tags. Null is the resource
+ *        is not an HTML
+ * @param callback(error)
+ */
+Plugin.prototype.crawl = function(result, $, callback) {
 
-    /**
-     * Emits when the crawler crawls a resource (html,js,css, pdf, ...)
-     *
-     * @param result : the result of the crawled resource
-     * @param the jquery like object for accessing to the HTML tags. Null is if the resource is not an HTML.
-     * See the project cheerio : https://github.com/cheeriojs/cheerio
-     */
-    this.crawler.on("crawl", function(result,$) {
+}
 
-    });
-
-    /**
-     * Emits when the crawler founds a link in a page
-     *
-     * @param the page that contains the link
-     * @param the link uri
-     * @param the anchor text
-     * @param true if the link is do follow
-     */
-    this.crawler.on("crawlLink", function(page, link, anchor, isDoFollow) {
-
-    });
-
-
-    /**
-     * Emits when the crawler founds an image
-     *
-     * @param the page that contains the image
-     * @param the image uri
-     * @param the alt text
-     */
-    this.crawler.on("crawlImage", function(page, link, alt) {
+/**
+ * Function triggers when the crawler found a link on a page
+ *
+ * @param the page url that contains the link
+ * @param the link found in the page
+ * @param the link anchor text
+ * @param true if the link is on follow
+ * @param callback(error)
+ */
+Plugin.prototype.crawlLink = function(page, link, anchor, isDoFollow, callback) {
 
 
-    });
+}
 
-    /**
-     * Emits when the crawler founds a redirect 3**
-     *
-     * @param the from url
-     * @param the to url
-     * @param statusCode : the exact status code : 301, 302, ...
-     */
-    this.crawler.on("crawlRedirect", function(from, to, statusCode) {
+/**
+ * Function triggers when the crawler found an image on a page
+ *
+ * @param the page url that contains the image
+ * @param the image link found in the page
+ * @param the image alt
+ * @param callback(error)
+ *
+ */
+Plugin.prototype.crawlImage = function(page, link, alt, callback) {
 
-    });
+
+}
+
+/**
+ * Function triggers when the crawler found an HTTP redirect
+ * @param the from url
+ * @param the to url
+ * @param the redirect code (301, 302, ...)
+ * @param callback(error)
+ *
+ */
+Plugin.prototype.crawlRedirect = function(from, to, statusCode, callback) {
+
+}
+
+/**
+ * Function triggers when a link is not crawled (depending on the crawler setting)
+ *
+ * @param the page url that contains the link
+ * @param the link found in the page
+ * @param the link anchor text
+ * @param true if the link is on follow
+ * @param callback(error)
+ *
+ */
+Plugin.prototype.unCrawl = function(page, link, anchor, isDoFollow, endCallback) {
 
 }
 
 module.exports.Plugin = Plugin;
+
 
 ```
 
@@ -144,29 +159,29 @@ var c = new crawler.Crawler({
 
 
 ```
-
-- maxConnections        : the number of connections used to crawl, default is 10.
-- externalDomains       : if true crawl the  external domains. This option can crawl a lot of different linked domains, default = false.
+- skipDuplicates        : if true skips URIs that were already crawled, default is true.
+- userAgent             : String, defaults to "NinjaBot"
+- maxConnections        : the number of connections used to crawl, default is 30.
+- externalDomains       : if true crawl the -external domains. This option can crawl a lot of different linked domains, default = false.
 - externalHosts         : if true crawl the others hosts on the same domain, default = false.
-- firstExternalLinkOnly : crawl only the first link found for external domains/hosts. externalHosts or externalDomains should be = true
+- firstExternalLinkOnly : crawl only the first link found for external domains/hosts. externalHosts and/or externalDomains should be = true
 - scripts               : if true crawl script tags, default = true.
 - links                 : if true crawl link tags, default = true.
 - linkTypes             : the type of the links tags to crawl (match to the rel attribute), default = ["canonical", "stylesheet"].
 - images                : if true crawl images, default = true.
+- depthLimit            : the depth limit for the crawl, default is no limit.
 - protocols             : list of the protocols to crawl, default = ["http", "https"].
-- timeout               : timeout per requests in milliseconds, default = 20000.
+- timeout               : max timeout per requests in milliseconds, default = 20000.
+- retryTimeout          : Time to wait before retrying the same request due to a timeout, default : 10000
 - retries               : number of retries if the request is on timeout, default = 3.
 - retryTimeout          : number of milliseconds to wait before retrying,  default = 10000.
-- maxErrors             : number of timeout errors before forcing  to decrease the crawl rate, default is 5. If the value is -1, there is no check.
-- errorRates            : an array of crawl rates to apply if there are no too many errors, default : [200,350,500] (in ms)
-- skipDuplicates        : if true skips URIs that were already crawled, default is true.
+- maxErrors             : number of timeout errors before forcing to decrease the crawl rate, default is 5. If the value is -1, there is no check.
+- errorRates            : an array of crawl rates to apply if there are no too many errors on one host, default : [200,350,500] (in ms)
 - rateLimits            : number of milliseconds to delay between each requests , default = 0.
-- depthLimit            : the depth limit for the crawl, default is no limit.
-- followRedirect        : if true, the crawl will not return the 301, it will
- follow directly the redirection, default is false.
-- userAgent             : String, defaults to "node-crawler/[version]"
+- followRedirect        : if true, the crawl will not return the 301, it will follow directly the redirection, default is false.
 - referer               : String, if truthy sets the HTTP referer header
-- domainBlackList       : The list of domain names (without tld) to avoid to crawl (an array of String). The default list is in the file :  /default-lists/domain-black-list.js
+- domainBlackList       : The list of domain names (without tld) to avoid to crawl (an array of String). The default list is in the file : /default-lists/domain-black-list.js
+- suffixBlackList       : The list of url suffice to avoid to crawl (an array of String). The default list is in the file : /default-lists/domain-black-list.js
 - proxyList             : The list of proxy to use for each crawler request (see below).
 
 
@@ -179,7 +194,7 @@ items in the queue() calls if you want them to be specific to that item (overwri
 
 ### Add your own crawl rules
 
-If the predefined options are not sufficiants, you can customize which kind of links to crawl by implementing a callback function in the crawler config object. This is a nice way to limit the crawl scope in function of your needs. The following example crawls only dofollow links.
+If the predefined options are not sufficients, you can customize which kind of links to crawl by implementing a callback function in the crawler config object. This is a nice way to limit the crawl scope in function of your needs. The following example crawls only dofollow links.
 
 
 ```javascript
@@ -222,8 +237,6 @@ Here is a code sample that uses proxies from a file :
 ```javascript
 var proxyLoader = require("simple-proxies/lib/proxyfileloader");
 var crawler     = require("crawler-ninja");
-var logger      = require("crawler-ninja/plugins/log-plugin");
-
 
 var proxyFile = "proxies.txt";
 
@@ -246,21 +259,15 @@ proxyLoader.loadProxyFile(config, function(error, proxyList) {
 
 
 function crawl(proxyList){
-    var c = new crawler.Crawler({
-        images : false,
-        scripts : false,
-        links : false, //link tags used for css, canonical, ...
-        followRedirect : true,
+    var c = new crawler.Crawler(
         proxyList : proxyList
     });
 
-    var log = new logger.Plugin(c);
-
+    // Register desired plugins here
     c.on("end", function() {
 
         var end = new Date();
         console.log("Well done Sir !, done in : " + (end - start));
-
 
     });
 
@@ -274,19 +281,25 @@ Using the crawl logger in your own plugin
 ------------------------------------------
 
 The current crawl logger is based on [Bunyan](https://github.com/trentm/node-bunyan).
-- It logs the all crawl actions & errors in the file ./logs/crawler.log.
-- The list of errors can be found in ./logs/errors.log.
+- It logs the all crawl actions & errors in the file ./logs/crawler.log and a more detailled log into debug.log.
 
 You can query the log file after the crawl (see the Bunyan doc for more informations) in order to filter errors or other info.
 
-You can also use the current logger or create a new one in your own Plugin.
+You can also use the current logger module in your own Plugin.
 
 *Use default loggers*
 
+You have to install the logger module into your own project :
+
+```
+npm install crawler-ninja-logger --save
+
+```
+Then, in your own Plugin code :
 
 ```javascript
 
-var log = require("crawler-ninja./lib/logger.js").Logger;
+var log = require("crawler-ninja-logger").Logger;
 
 log.info("log info");  // Log into crawler.log
 log.debug("log debug"); // Log into crawler.log
@@ -294,11 +307,17 @@ log.error("log error"); // Log into crawler.log & errors.log
 log.info({statusCode : 200, url: "http://www.google.com" }) // log a json
 ```
 
+The crawler logs with the following structure
+
+```
+log.info({"url" : "url", "step" : "step", "message" : "message", "options" : "options"});
+```
+
 *Create a new logger for your plugin*
 
 ```javascript
 // Log into crawler.log
-var log = require("crawler-ninja/lib/logger.js");
+var log = require("crawler-ninja-logger");
 var myLog = log.createLogger("myLoggerName", {path : "./log-file-name.log"}););
 
 myLog.info({url:"http://www.google.com", pageRank : 10});
@@ -312,20 +331,19 @@ More features & flexibilities will be added in the upcoming releases.
 
 Control the crawl rate
 -----------------------
-All sites cannot support an intensive crawl. This crawl provide 2 solutions to control the crawl rates :
+All sites cannot support an intensive crawl. This crawl provides 2 solutions to control the crawl rates :
 - implicit : the crawl decrease the crawl rate if there are too many timeouts on a host. the crawl rate is controlled for each crawled hosts separately.
 - explicit : you can specify the crawl rate in the crawler config. This setting is unique for all hosts.
 
 
 **Implicit setting**
 
-Without changing the crawler config, it will decrease the crawl rate after 5 timouts errors on a host. It will force a rate of 200ms between each requests. If new 5 timout errors still occur, it will use a rate of 350ms and after that a rate of 500ms between all requests for this host. If the timouts persist, the crawler will cancel the crawl on that host.
+Without changing the crawler config, it will decrease the crawl rate after 5 timouts errors on a host. It will force a rate of 200ms between each requests. If new 5 timeout errors still occur, it will use a rate of 350ms and after that a rate of 500ms between all requests for this host. If the timeouts persists, the crawler will cancel the crawl on that host.
 
-You can change the default values for this implicit setting (5 timout errors & rates = 200, 350, 500ms). Here is an example :
+You can change the default values for this implicit setting (5 timeout errors & rates = 200, 350, 500ms). Here is an example :
 
 ```javascript
 var crawler = require("crawler-ninja");
-var logger  = require("crawler-ninja/plugins/log-plugin");
 
 var c = new crawler.Crawler({
   // new values for the implicit setting
@@ -334,13 +352,10 @@ var c = new crawler.Crawler({
 
 });
 
-var log = new logger.Plugin(c);
-
+// Register your plugins here
 c.on("end", function() {
-
     var end = new Date();
     console.log("End of crawl !, done in : " + (end - start));
-
 
 });
 
@@ -351,7 +366,7 @@ Note that an higher value for maxErrors can decrease the number of analyzed page
 
 **Explicit setting**
 
-In this configuration, you are apply the same crawl rate for all requests on all hosts.
+In this configuration, you are apply the same crawl rate for all requests on all hosts (even for successful requests).
 
 ```javascript
 var crawler = require("crawler-ninja");
