@@ -3,4 +3,5 @@ node_modules
 result.json
 todo.txt
 logs
-lib/crawler.js
+dump
+labs

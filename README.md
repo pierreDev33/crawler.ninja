@@ -471,3 +471,6 @@ ChangeLog
 - Review README
 - Bug fixs
 - Add an empty plugin sample. See the js file : /plugins/empty-plugin.js
+
+0.1.13
+- Experiments for a better memory management

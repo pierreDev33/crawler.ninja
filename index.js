@@ -4,15 +4,11 @@ var util        = require("util");
 var _           = require("underscore");
 var async       = require('async');
 var log         = require("crawler-ninja-logger").Logger;
-var Map         = require("collections/fast-map");
-var Set         = require("collections/fast-set");
 var requester   = require("./lib/queue-requester");
 var URI         = require('./lib/uri.js');
 var html        = require("./lib/html.js");
 var store       = require("./lib/store/store.js");
 var pm          = require("./lib/plugin-manager.js");
-
-
 
 var domainBlackList  = require("./default-lists/domain-black-list.js").list();
 var suffixBlackList  = require("./default-lists/suffix-black-list.js").list();
@@ -104,7 +100,7 @@ function Crawler(config) {
 
     this.pm = new pm.PluginManager();
 
-    this.httpRequester = new requester.Requester(this.config);
+    requester.init(this.config.maxConnections, this.config.onDrain);
 
     events.EventEmitter.call(this);
 
@@ -128,7 +124,7 @@ Crawler.prototype.queue = function(options) {
         if (self.config.onCrawl) {
             self.config.onCrawl({errorCode : "NO_OPTIONS"}, {method:"GET", url : "unknown", proxy : "", error : true},
                                 function(error){
-                                    if (self.httpRequester.idle()) {
+                                    if (requester.idle()) {
                                       self.config.onDrain();
                                     }
                                 });
@@ -151,7 +147,7 @@ Crawler.prototype.queue = function(options) {
     // if String, we expect to receive an url
     if (_.isString(options)) {
       store.getStore().addStartUrl(options, function(error) {
-          self.httpRequester.queue(addDefaultOptions({uri:options, url:options}, self.config));
+          requester.queue(addDefaultOptions({uri:options, url:options}, self.config));
       });
 
     }
@@ -162,7 +158,7 @@ Crawler.prototype.queue = function(options) {
         if (self.config.onCrawl) {
             self.config.onCrawl({errorCode : "NO_URL_OPTION"}, {method:"GET", url : "unknown", proxy : "", error : true},
                                 function(error){
-                                    if (self.httpRequester.idle()) {
+                                    if (requester.idle()) {
                                       self.config.onDrain();
                                     }
                                 });
@@ -171,7 +167,7 @@ Crawler.prototype.queue = function(options) {
       }
       else {
         store.getStore().addStartUrl(_.has(options, "url") ? options.url : options.uri, function(error) {
-            self.httpRequester.queue(addDefaultOptions(options, self.config));
+            requester.queue(addDefaultOptions(options, self.config));
         });
       }
     }
@@ -308,7 +304,10 @@ Crawler.prototype.crawl = function (error, result, callback) {
       async.apply(self.pm.crawl.bind(this.pm),result, $),
       async.apply(self.analyzeHTML.bind(self), result, $),
       async.apply(self.applyRedirect.bind(self), result),
-    ], callback);
+    ], function(error) {
+        result = null;
+        callback(error);
+    });
 
 }
 
@@ -322,7 +321,7 @@ Crawler.prototype.applyRedirect = function(result, callback) {
       var to = URI.linkToURI(from, to);
       var self = this;
       this.pm.crawlRedirect(from, to, result.statusCode, function(){
-        self.httpRequester.queue(self.buildNewOptions(result,to));
+        requester.queue(self.buildNewOptions(result,to));
         callback();
       });
   }
@@ -546,7 +545,7 @@ Crawler.prototype.checkUrlToCrawl = function(result, parentUri, linkUri, anchor,
                 return callback(error);
               }
               if (toCrawl && (result.depthLimit == -1 || currentDepth <= result.depthLimit)) {
-                  self.httpRequester.queue(self.buildNewOptions(result,linkUri));
+                  requester.queue(self.buildNewOptions(result,linkUri));
                   callback();
               }
               else {

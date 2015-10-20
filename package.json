@@ -1,6 +1,6 @@
 {
   "name": "crawler-ninja",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "A web crawler made for the SEO based on plugins. Please wait or contribute ... still in beta",
   "main": "index.js",
   "repository": {
@@ -8,12 +8,13 @@
     "url": "https://github.com/christophebe/crawler.ninja"
   },
   "dependencies": {
-    "crawler-ninja-logger" : "*",
     "URIjs": "*",
     "async": " *",
     "cheerio": "*",
     "collections": "*",
+    "crawler-ninja-logger": "*",
     "crypto": "*",
+    "heapdump": "^0.3.7",
     "request": "*",
     "riak-js": "*",
     "robots-parser": "*",
