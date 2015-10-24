@@ -59,7 +59,6 @@ Plugin.prototype.crawl = function(result, $, callback) {
 
       //http status 2**
       if (result.statusCode >= 200  &&  result.statusCode <= 299 ) {
-
           this.analyzeResource(result, $);
       }
 

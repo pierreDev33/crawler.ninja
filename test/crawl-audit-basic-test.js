@@ -13,51 +13,46 @@ describe('Audit Plugin Basic tests', function() {
 
         it('Should return an error for an invalid site', function(done) {
 
-            var c = new crawler.Crawler();
             var audit = new seoaudit.Plugin();
-            c.registerPlugin(audit);
-
-            c.on("end", function(){
+            var end = function(){
 
                 assert(audit.errors.length == 1);
                 done();
 
-            });
+            };
+            crawler.init(null, end);
+            crawler.registerPlugin(audit);
 
-            c.queue({url : "http://test:1234"});
+            crawler.queue({url : "http://test:1234"});
 
         });
 
         it('Should return the redirect info for 301', function(done) {
 
-            var c = new crawler.Crawler();
             var audit = new seoaudit.Plugin();
-            c.registerPlugin(audit);
 
-            c.on("end", function(){
+            var end = function() {
+              var resource = audit.resources.get("http://localhost:9999/redirect");
+              assert(resource.statusCode==301);
+              var pageDest = audit.outLinks.get("http://localhost:9999/redirect")[0].page;
+              assert( pageDest == "/page2.html", "invalide destination page for the redirect : " + pageDest );
 
-                var resource = audit.resources.get("http://localhost:9999/redirect");
-                assert(resource.statusCode==301);
-                var pageDest = audit.outLinks.get("http://localhost:9999/redirect")[0].page;
-                assert( pageDest == "/page2.html", "invalide destination page for the redirect : " + pageDest );
+              done();
 
-                done();
+            };
 
-            });
-
-            c.queue({url : "http://localhost:9999/redirect"});
+            crawler.init(null, end);
+            crawler.registerPlugin(audit);
+            crawler.queue({url : "http://localhost:9999/redirect"});
 
         });
 
         it('Should return the redirect chain info for a series of 301', function(done) {
 
-            var c = new crawler.Crawler();
+
             var audit = new seoaudit.Plugin();
-            c.registerPlugin(audit);
-            //var log = new logger.Plugin(c);
 
-            c.on("end", function(){
-
+            var end = function(){
 
                 var resource = audit.resources.get("http://localhost:9999/redirect1");
                 assert(resource.statusCode==301);
@@ -72,19 +67,17 @@ describe('Audit Plugin Basic tests', function() {
                 assert(audit.redirects.get("http://localhost:9999/redirect3").statusCode == 301);
                 done();
 
-            });
-
-            c.queue({url : "http://localhost:9999/redirect1"});
+            };
+            crawler.init(null, end);
+            crawler.registerPlugin(audit);
+            crawler.queue({url : "http://localhost:9999/redirect1"});
 
         });
 
         it('Should return only the latest url after a 301 chain with the option followRedirect = true', function(done) {
 
-            var c = new crawler.Crawler({followRedirect : true});
             var audit = new seoaudit.Plugin();
-            c.registerPlugin(audit);
-
-            c.on("end", function(){
+            var end = function(){
 
                 var resource = audit.resources.get("http://localhost:9999/index.html");
                 assert(resource.statusCode==200);
@@ -93,63 +86,59 @@ describe('Audit Plugin Basic tests', function() {
 
                 done();
 
-            });
+            };
 
-            c.queue({url : "http://localhost:9999/redirect1"});
+            crawler.init({followRedirect : true}, end);
+            crawler.registerPlugin(audit);
+
+            crawler.queue({url : "http://localhost:9999/redirect1"});
 
         });
 
         it('Should crawl images', function(done) {
 
-            var c = new crawler.Crawler();
             var audit = new seoaudit.Plugin();
-            //var log = new logger.Plugin();
-            c.registerPlugin(audit);
-            //c.registerPlugin(log);
-
-            c.on("end", function(){
+            var end = function(){
                 //console.log("Unit test : end");
                 var resource = audit.resources.get("http://localhost:9999/200x200-image.jpg");
                 assert(resource.contentType =='image/jpeg');
 
                 done();
 
-            });
+            };
 
-            c.queue({url : "http://localhost:9999/page1.html"});
+            crawler.init(null, end);
+            crawler.registerPlugin(audit);
+            crawler.queue({url : "http://localhost:9999/page1.html"});
 
         });
 
         it('Should crawl 404 urls', function(done) {
 
-            var c = new crawler.Crawler();
             var audit = new seoaudit.Plugin();
-            c.registerPlugin(audit);
-
-            c.on("end", function(){
+            var end = function(){
 
                 var resource = audit.resources.get("http://localhost:9999/404-test.html");
-
                 assert(resource.statusCode==404);
                 assert(audit.outLinks.get("http://localhost:9999/page3.html")[0].page == "http://localhost:9999/404-test.html");
                 assert(audit.inLinks.get("http://localhost:9999/404-test.html")[0].page == "http://localhost:9999/page3.html");
 
                 done();
 
-            });
+            };
 
-            c.queue({url : "http://localhost:9999/page3.html"});
+            crawler.init(null, end);
+            crawler.registerPlugin(audit);
+
+            crawler.queue({url : "http://localhost:9999/page3.html"});
 
         });
 
 
         it('Should crawl 500 urls', function(done) {
 
-            var c = new crawler.Crawler();
             var audit = new seoaudit.Plugin();
-            c.registerPlugin(audit);
-
-            c.on("end", function(){
+            var end = function(){
 
                 var resource = audit.resources.get("http://localhost:9999/internal-error");
 
@@ -159,20 +148,19 @@ describe('Audit Plugin Basic tests', function() {
 
                 done();
 
-            });
+            };
 
-            c.queue({url : "http://localhost:9999/page3.html"});
+            crawler.init(null, end);
+            crawler.registerPlugin(audit);
+            crawler.queue({url : "http://localhost:9999/page3.html"});
 
         });
 
 
         it('Should crawl even with timout', function(done) {
             this.timeout(5000);
-            var c = new crawler.Crawler({timeout: 50, maxErrors:-1, retries:1, retryTimeout:5 });
             var audit = new seoaudit.Plugin();
-            c.registerPlugin(audit);
-
-            c.on("end", function(){
+            var end = function(){
 
                 var resource = audit.resources.get("http://localhost:9999/timeout");
                 //console.log(audit.resources.get("http://localhost:9999/timeout"));
@@ -183,20 +171,19 @@ describe('Audit Plugin Basic tests', function() {
 
                 done();
 
-            });
+            };
 
-            c.queue({url : "http://localhost:9999/page4.html"});
-            //c.queue({url : "http://localhost:9999/timeout"});
+            crawler.init({timeout: 50, maxErrors:-1, retries:1, retryTimeout:5 }, end);
+            crawler.registerPlugin(audit);
+            crawler.queue({url : "http://localhost:9999/page4.html"});
+
 
         });
 
         it('Should crawl even with timout with retries', function(done) {
             this.timeout(10000);
-            var c = new crawler.Crawler({timeout: 50, retries : 3, retryTimeout : 500});
             var audit = new seoaudit.Plugin();
-            c.registerPlugin(audit);
-
-            c.on("end", function(){
+            var end =  function(){
 
                 var resource = audit.resources.get("http://localhost:9999/timeout");
 
@@ -207,9 +194,12 @@ describe('Audit Plugin Basic tests', function() {
 
                 done();
 
-            });
+            };
 
-            c.queue({url : "http://localhost:9999/page4.html"});
+            crawler.init({timeout: 50, retries : 3, retryTimeout : 500}, end);
+            crawler.registerPlugin(audit);
+
+            crawler.queue({url : "http://localhost:9999/page4.html"});
 
         });
 
@@ -236,26 +226,24 @@ describe('Audit Plugin Basic tests', function() {
 
         it('Should crawl even with dns error', function(done) {
 
-            var c = new crawler.Crawler({externalDomains : true});
-            var audit = new seoaudit.Plugin();
-            c.registerPlugin(audit);
-
-            c.on("end", function(){
+            var end = function(){
 
                 var resource = audit.resources.get("http://www.thisnotcorrect.abc/");
 
-                assert(resource.statusCode=="DNS lookup failed");
-
-
+                assert(resource.statusCode == "DNS lookup failed");
                 assert(audit.outLinks.get("http://localhost:9999/page5.html")[0].page == "http://www.thisnotcorrect.abc/");
                 assert(audit.outLinks.get("http://localhost:9999/page5.html")[1].page == "http://localhost:9999/");
                 assert(audit.inLinks.get("http://www.thisnotcorrect.abc/")[0].page == "http://localhost:9999/page5.html");
 
                 done();
 
-            });
+            };
 
-            c.queue({url : "http://localhost:9999/page5.html"});
+            var audit = new seoaudit.Plugin();
+            crawler.init({externalDomains : true}, end);
+            crawler.registerPlugin(audit);
+
+            crawler.queue({url : "http://localhost:9999/page5.html"});
 
         });
 

@@ -1,4 +1,3 @@
-var events      = require('events');
 var timers      = require('timers');
 var util        = require("util");
 var _           = require("underscore");
@@ -8,7 +7,7 @@ var requester   = require("./lib/queue-requester");
 var URI         = require('./lib/uri.js');
 var html        = require("./lib/html.js");
 var store       = require("./lib/store/store.js");
-var pm          = require("./lib/plugin-manager.js");
+var plugin      = require("./lib/plugin-manager.js");
 
 var domainBlackList  = require("./default-lists/domain-black-list.js").list();
 var suffixBlackList  = require("./default-lists/suffix-black-list.js").list();
@@ -42,102 +41,113 @@ var DEFAULT_REFERER = false;
 
 var DEFAULT_STORE_MODULE = "./memory-store.js";
 
-/**
- * The crawler object
- *
- * @param config used to customize the crawler.
- *
- *  The current config attributes are :
- *  - maxConnections        : the number of connections used to crawl - default is 10
- *  - externalDomains       : if true crawl the  external domains. This option can crawl a lot of different linked domains, default = false.
- *  - externalHosts         : if true crawl the others hosts on the same domain, default = false.
- *  - firstExternalLinkOnly : crawl only the first link found for external domains/hosts. externalHosts or externalDomains should be = true
- *  - scripts               : if true crawl script tags
- *  - links                 : if true crawl link tags
- *  - linkTypes             : the type of the links tags to crawl (match to the rel attribute), default : ["canonical", "stylesheet"]
- *  - images                : if true crawl images
- *  - protocols             : list of the protocols to crawl, default = ["http", "https"]
- *  - timeout               : timeout per requests in milliseconds (Default 20000)
- *  - retries               : number of retries if the request fails (default 3)
- *  - retryTimeout          : number of milliseconds to wait before retrying (Default 10000)
- *  - maxErrors             : number of timeout errors before changing the crawl rate, default is 5,
-    - errorRates            : list of rates to used when too many timeout errors occur.
- *  - skipDuplicates        : if true skips URIs that were already crawled - default is true
- *  - rateLimits            : number of milliseconds to delay between each requests (Default 0).
- *                            Note that this option will force crawler to use only one connection
- *  - depthLimit            : the depth limit for the crawl
- *  - followRedirect        : if true, the crawl will not return the 301, it will follow directly the redirection
- *  - proxyList             : the list of proxies (see the project simple-proxies on npm)
- *
- *  + all options provided by nodejs request : https://github.com/request/request
- */
-function Crawler(config) {
 
-    // Default config
-    this.config = this.createDefaultConfig();
+(function () {
 
-    // Merge default config values & overridden values provided by the arg config
-    if (config) {
-      _.extend(this.config, config);
+  var globalOptions = {};
+
+  // assign the default updateDepth method used to calculate the crawl depth
+  var updateDepthFn = updateDepth;
+
+  var endCallback = null;
+
+  var pm = new plugin.PluginManager();
+
+  /**
+   * Init the crawler
+   *
+   * @param config used to customize the crawler.
+   *
+   *  The current config attributes are :
+   *  - maxConnections        : the number of connections used to crawl - default is 10
+   *  - externalDomains       : if true crawl the  external domains. This option can crawl a lot of different linked domains, default = false.
+   *  - externalHosts         : if true crawl the others hosts on the same domain, default = false.
+   *  - firstExternalLinkOnly : crawl only the first link found for external domains/hosts. externalHosts or externalDomains should be = true
+   *  - scripts               : if true crawl script tags
+   *  - links                 : if true crawl link tags
+   *  - linkTypes             : the type of the links tags to crawl (match to the rel attribute), default : ["canonical", "stylesheet"]
+   *  - images                : if true crawl images
+   *  - protocols             : list of the protocols to crawl, default = ["http", "https"]
+   *  - timeout               : timeout per requests in milliseconds (Default 20000)
+   *  - retries               : number of retries if the request fails (default 3)
+   *  - retryTimeout          : number of milliseconds to wait before retrying (Default 10000)
+   *  - maxErrors             : number of timeout errors before changing the crawl rate, default is 5,
+      - errorRates            : list of rates to used when too many timeout errors occur.
+   *  - skipDuplicates        : if true skips URIs that were already crawled - default is true
+   *  - rateLimits            : number of milliseconds to delay between each requests (Default 0).
+   *                            Note that this option will force crawler to use only one connection
+   *  - depthLimit            : the depth limit for the crawl
+   *  - followRedirect        : if true, the crawl will not return the 301, it will follow directly the redirection
+   *  - proxyList             : the list of proxies (see the project simple-proxies on npm)
+   *
+   *  + all options provided by nodejs request : https://github.com/request/request
+   *
+   * @param callback() called when all URLs have been crawled
+   * @param proxies to used when making http requests
+   */
+
+  function init(config, callback, proxies) {
+
+      if (! callback) {
+        log.error("The end callback is not defined");
+      }
+
+      // Default config
+      globalOptions = createDefaultConfig();
+
+      // Merge default config values & overridden values provided by the arg config
+      if (config) {
+        _.extend(globalOptions, config);
+      }
+
+      // if using rateLimits we want to use only one connection with delay between requests
+      if (globalOptions.rateLimits !== 0) {
+          globalOptions.maxConnections = 1;
+      }
+
+      // create the crawl store
+      store.createStore(globalOptions.storeModuleName, globalOptions.storeParams ? globalOptions.storeParams : null);
+
+      // If the config object contains an new implementation of the updateDepth method
+      if (globalOptions.updateDepth) {
+        updateDepthFn = globalOptions.updateDepth;
+      }
+
+      // Init the crawl queue
+      endCallback = callback;
+      requester.init(globalOptions.maxConnections, crawl, endCallback, proxies);
+
+  }
+
+  /**
+   * Add one or more urls to crawl
+   *
+   * @param The url(s) to crawl
+   *
+   */
+ function queue(options) {
+    if (! endCallback) {
+      console.log("The end callback is not defined, impossible to run correctly");
+      return;
     }
-
-    // if using rateLimits we want to use only one connection with delay between requests
-    if (this.config.rateLimits !== 0) {
-        this.config.maxConnections = 1;
-    }
-
-    // create the crawl store
-    store.createStore(this.config.storeModuleName, this.config.storeParams ? this.config.storeParams : null);
-
-
-    // assign the default updateDepth method used to calculate the crawl depth
-    this.updateDepth = updateDepth;
-
-    // If the config object contains an new implementation of the updateDepth method
-    if (this.config.updateDepth) {
-      this.updateDepth = this.config.updateDepth;
-    }
-
-    this.pm = new pm.PluginManager();
-
-    requester.init(this.config.maxConnections, this.config.onDrain);
-
-    events.EventEmitter.call(this);
-
-}
-
-util.inherits(Crawler, events.EventEmitter);
-
-
-/**
- * Add one or more urls to crawl
- *
- * @param The url(s) to crawl
- *
- */
-Crawler.prototype.queue = function(options) {
-
-    var self = this;
-
+    
     // Error if no options
     if (! options){
-        if (self.config.onCrawl) {
-            self.config.onCrawl({errorCode : "NO_OPTIONS"}, {method:"GET", url : "unknown", proxy : "", error : true},
-                                function(error){
-                                    if (requester.idle()) {
-                                      self.config.onDrain();
-                                    }
-                                });
-        }
-        return;
 
+        crawl({errorCode : "NO_OPTIONS"}, {method:"GET", url : "unknown", proxy : "", error : true},
+              function(error){
+                  if (requester.idle()) {
+                      endCallback();
+                  }
+              });
+        return;
     }
 
 
     // if Array => recall this method for each element
     if (_.isArray(options)) {
         options.forEach(function(opt){
-            self.queue(opt);
+            queue(opt);
         });
 
         return;
@@ -147,7 +157,7 @@ Crawler.prototype.queue = function(options) {
     // if String, we expect to receive an url
     if (_.isString(options)) {
       store.getStore().addStartUrl(options, function(error) {
-          requester.queue(addDefaultOptions({uri:options, url:options}, self.config));
+          requester.queue(addDefaultOptions({uri:options, url:options}, globalOptions));
       });
 
     }
@@ -155,23 +165,20 @@ Crawler.prototype.queue = function(options) {
     else {
 
       if (! _.has(options, "url") && ! _.has(options, "uri")) {
-        if (self.config.onCrawl) {
-            self.config.onCrawl({errorCode : "NO_URL_OPTION"}, {method:"GET", url : "unknown", proxy : "", error : true},
-                                function(error){
-                                    if (requester.idle()) {
-                                      self.config.onDrain();
-                                    }
-                                });
-        }
 
+            crawl({errorCode : "NO_URL_OPTION"}, {method:"GET", url : "unknown", proxy : "", error : true},
+                  function(error){
+                      if (requester.idle()) {
+                          endCallback();
+                      }
+                  });
       }
       else {
         store.getStore().addStartUrl(_.has(options, "url") ? options.url : options.uri, function(error) {
-            requester.queue(addDefaultOptions(options, self.config));
+            requester.queue(addDefaultOptions(options, globalOptions));
         });
       }
     }
-
 
 }
 
@@ -199,9 +206,9 @@ Crawler.prototype.queue = function(options) {
  * @param the url to apply into the new option object
  * @return the new options object
  */
-Crawler.prototype.buildNewOptions = function(options, newUrl) {
+ function buildNewOptions (options, newUrl) {
 
-    var o = this.createDefaultConfig(newUrl);
+    var o = createDefaultConfig(newUrl);
 
     // Copy only options attributes that are in the options used for the previous request
     // Could be more simple ? ;-)
@@ -217,7 +224,7 @@ Crawler.prototype.buildNewOptions = function(options, newUrl) {
     }
     return o;
 
-}
+ }
 
 
 /**
@@ -225,12 +232,9 @@ Crawler.prototype.buildNewOptions = function(options, newUrl) {
  *
  * @returns the config object
  */
-Crawler.prototype.createDefaultConfig = function(url) {
-  var self = this;
+function createDefaultConfig(url) {
+
   var config = {
-
-
-      cache                   : DEFAULT_CACHE,
       method                  : DEFAULT_METHOD,
       referer                 : DEFAULT_REFERER,
       maxConnections          : DEFAULT_NUMBER_OF_CONNECTIONS,
@@ -255,19 +259,7 @@ Crawler.prototype.createDefaultConfig = function(url) {
       userAgent               : DEFAULT_USER_AGENT,
       domainBlackList         : domainBlackList,
       suffixBlackList         : suffixBlackList,
-      storeModuleName             : DEFAULT_STORE_MODULE,
-
-      onCrawl : function(error, result, callback){
-        self.crawl(error, result, callback);
-      },
-
-      onDrain : function(){
-        timers.setImmediate(function(){
-            log.debug({ "step" : "onDrain", "message" : "End of the crawl"});
-            self.emit('end');
-        });
-
-      }
+      storeModuleName         : DEFAULT_STORE_MODULE,
 
   };
 
@@ -281,29 +273,28 @@ Crawler.prototype.createDefaultConfig = function(url) {
 }
 
 /**
- * Default callback function used when the http queue requester get a resource (html, pdf, css, ...)
+ * Default callback function used when the http queue requester get a resource (html, pdf, css, ...) or an error
  *
  * @param error : the usual nodejs error
  * @param result: the crawled resource
  *
  */
-Crawler.prototype.crawl = function (error, result, callback) {
-
-    var self = this;
+function crawl(error, result, callback) {
 
     // if HTTP error, delegate to the plugins
     if (error) {
-        this.pm.error(error,result, callback);
+        pm.error(error,result, callback);
         return;
     }
+
     var $ = html.isHTML(result.body) ? html.$(result.body) : null;
 
     // Analyse the HTTP response in order to check the content (links, images, ...)
     // or apply a redirect
     async.parallel([
-      async.apply(self.pm.crawl.bind(this.pm),result, $),
-      async.apply(self.analyzeHTML.bind(self), result, $),
-      async.apply(self.applyRedirect.bind(self), result),
+      async.apply(pm.crawl.bind(pm), result, $),
+      async.apply(analyzeHTML, result, $),
+      async.apply(applyRedirect, result),
     ], function(error) {
         result = null;
         callback(error);
@@ -312,16 +303,16 @@ Crawler.prototype.crawl = function (error, result, callback) {
 }
 
 
-Crawler.prototype.applyRedirect = function(result, callback) {
+function applyRedirect(result, callback) {
   // if 30* & followRedirect = false => chain 30*
-  if (result.statusCode >= 300 && result.statusCode <= 399  &&  ! this.config.followRedirect) {
+  if (result.statusCode >= 300 && result.statusCode <= 399  &&  ! result.followRedirect) {
 
       var from = result.uri;
       var to = result.headers["location"];
       var to = URI.linkToURI(from, to);
-      var self = this;
-      this.pm.crawlRedirect(from, to, result.statusCode, function(){
-        requester.queue(self.buildNewOptions(result,to));
+
+      pm.crawlRedirect(from, to, result.statusCode, function(){
+        requester.queue(buildNewOptions(result,to));
         callback();
       });
   }
@@ -339,7 +330,7 @@ Crawler.prototype.applyRedirect = function(result, callback) {
  * @param the jquery like object for accessing to the HTML tags. Null is the resource
  *        is not an HTML
  */
-Crawler.prototype.analyzeHTML = function(result, $, callback) {
+function analyzeHTML(result, $, callback) {
 
   // if $ is note defined, this is not a HTML page with an http status 200
   if (! $) {
@@ -347,14 +338,13 @@ Crawler.prototype.analyzeHTML = function(result, $, callback) {
   }
 
   log.debug({"url" : result.url, "step" : "analyzeHTML", "message" : "Start check HTML code"});
-  var self = this;
 
   async.parallel([
 
-    async.apply(self.crawlHrefs.bind(self), result, $),
-    async.apply(self.crawlLinks.bind(self), result, $),
-    async.apply(self.crawlScripts.bind(self), result, $),
-    async.apply(self.crawlImages.bind(self), result, $),
+    async.apply(crawlHrefs, result, $),
+    async.apply(crawlLinks, result, $),
+    async.apply(crawlScripts, result, $),
+    async.apply(crawlImages, result, $),
 
   ], callback);
 
@@ -368,17 +358,17 @@ Crawler.prototype.analyzeHTML = function(result, $, callback) {
  * @param the jquery like object for accessing to the HTML tags.
  *
  */
-Crawler.prototype.crawlHrefs = function(result, $, endCallback) {
+function crawlHrefs(result, $, endCallback) {
 
     log.debug({"url" : result.url, "step" : "analyzeHTML", "message" : "CrawlHrefs"});
-    var self = this;
+
     async.each($('a'), function(a, callback) {
-        self.crawlHref($, result, a, callback);
+        crawlHref($, result, a, callback);
     }, endCallback);
 
 }
 
-Crawler.prototype.crawlHref = function($,result, a, callback) {
+function crawlHref($,result, a, callback) {
 
       var link = $(a).attr('href');
       var parentUri = result.uri;
@@ -390,9 +380,8 @@ Crawler.prototype.crawlHref = function($,result, a, callback) {
 
         var linkUri = URI.linkToURI(parentUri, link);
 
-        var self = this;
-        this.pm.crawlLink(parentUri, linkUri, anchor, isDoFollow, function(){
-          self.checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, callback);
+        pm.crawlLink(parentUri, linkUri, anchor, isDoFollow, function(){
+          checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, callback);
         });
 
       }
@@ -410,21 +399,20 @@ Crawler.prototype.crawlHref = function($,result, a, callback) {
  * @param result : the result of the crawled resource
  * @param the jquery like object for accessing to the HTML tags.
  */
-Crawler.prototype.crawlLinks = function(result, $, endCallback) {
+function crawlLinks(result, $, endCallback) {
 
-    if (! this.config.links){
+    if (! result.links){
         return endCallback();
     }
 
     log.debug({"url" : result.url, "step" : "analyzeHTML", "message" : "CrawlLinks"});
-    var self = this;
 
     async.each($('link'), function(linkTag, callback) {
-        self.crawLink($, result, linkTag, callback);
+        crawLink($, result, linkTag, callback);
     }, endCallback);
 }
 
-Crawler.prototype.crawLink = function($,result,linkTag, callback) {
+function crawLink($,result,linkTag, callback) {
       var link = $(linkTag).attr('href');
       var parentUri = result.uri;
 
@@ -432,11 +420,11 @@ Crawler.prototype.crawLink = function($,result,linkTag, callback) {
 
           var rel =  $(linkTag).attr('rel');
 
-          if (this.config.linkTypes.indexOf(rel) > 0) {
+          if (result.linkTypes.indexOf(rel) > 0) {
               var linkUri = URI.linkToURI(parentUri, link);
-              var self = this;
-              this.pm.crawlLink(parentUri, linkUri, null, null, function(){
-                self.checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
+
+              pm.crawlLink(parentUri, linkUri, null, null, function(){
+                checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
               });
           }
           else {
@@ -455,32 +443,29 @@ Crawler.prototype.crawLink = function($,result,linkTag, callback) {
  * @param result : the result of the crawled resource
  * @param the jquery like object for accessing to the HTML tags.
  */
-Crawler.prototype.crawlScripts = function(result, $, endCallback) {
+function crawlScripts(result, $, endCallback) {
 
-    if (! this.config.scripts) {
+    if (! result.scripts) {
       return endCallback();
     }
 
     log.debug({"url" : result.url, "step" : "analyzeHTML", "message" : "CrawlScripts"});
-    var self = this;
 
     async.each($('script'), function(script, callback) {
-        self.crawlScript($, result, script, callback);
+        crawlScript($, result, script, callback);
     }, endCallback);
 }
 
-Crawler.prototype.crawlScript = function($,result, script, callback) {
+function crawlScript($,result, script, callback) {
 
     var link = $(script).attr('src');
     var parentUri = result.uri;
 
     if (link) {
           var linkUri = URI.linkToURI(parentUri, link);
-          var self = this;
-          this.pm.crawlLink(parentUri, linkUri, null, null, function(){
-            self.checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
+          pm.crawlLink(parentUri, linkUri, null, null, function(){
+            checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
           });
-
     }
     else {
       callback();
@@ -496,60 +481,55 @@ Crawler.prototype.crawlScript = function($,result, script, callback) {
  * @param result : the result of the crawled resource
  * @param the jquery like object for accessing to the HTML tags.
  */
-Crawler.prototype.crawlImages = function(result, $, endCallback) {
+function crawlImages(result, $, endCallback) {
 
-    if (! this.config.images) {
+    if (! result.images) {
       return endCallback();
     }
 
     log.debug({"url" : result.url, "step" : "analyzeHTML", "message" : "CrawlImages"});
-    var self = this;
 
     async.each($('img'), function(img, callback) {
-        self.crawlImage($, result, img, callback);
+        crawlImage($, result, img, callback);
     }, endCallback);
 }
 
-Crawler.prototype.crawlImage = function($,result, img, callback) {
+function crawlImage ($,result, img, callback) {
       var parentUri = result.uri;
 
       var link = $(img).attr('src');
       var alt = $(img).attr('alt');
       if (link) {
           var linkUri = URI.linkToURI(parentUri, link);
-          var self = this;
-          this.pm.crawlImage(parentUri, linkUri, alt, function(){
-            self.checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
+          pm.crawlImage(parentUri, linkUri, alt, function(){
+            checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
           });
-
       }
       else {
         callback();
       }
 }
 
-Crawler.prototype.checkUrlToCrawl = function(result, parentUri, linkUri, anchor, isDoFollow, endCallback) {
-    var self = this;
+function checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, endCallback) {
 
     async.waterfall([
         function(callback) {
-
-            self.updateDepth(parentUri, linkUri, function(error, currentDepth) {
+            updateDepth(parentUri, linkUri, function(error, currentDepth) {
                 callback(error,currentDepth);
             });
 
         },
         function(currentDepth, callback) {
-          self.isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri, anchor, isDoFollow, function(error, toCrawl) {
+          isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri, anchor, isDoFollow, function(error, toCrawl) {
               if (error) {
                 return callback(error);
               }
               if (toCrawl && (result.depthLimit == -1 || currentDepth <= result.depthLimit)) {
-                  requester.queue(self.buildNewOptions(result,linkUri));
+                  requester.queue(buildNewOptions(result,linkUri));
                   callback();
               }
               else {
-                self.pm.unCrawl(parentUri, linkUri, anchor, isDoFollow, callback);
+                pm.unCrawl(parentUri, linkUri, anchor, isDoFollow, callback);
               }
 
           });
@@ -567,7 +547,7 @@ Crawler.prototype.checkUrlToCrawl = function(result, parentUri, linkUri, anchor,
  * @param true if the link is dofollow
  * @returns
  */
-Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri, link, anchor, isDoFollow, callback) {
+function isAGoodLinkToCrawl(result, currentDepth, parentUri, link, anchor, isDoFollow, callback) {
 
   store.getStore().isStartFromUrl(parentUri, link, function(error, startFrom){
 
@@ -621,12 +601,12 @@ Crawler.prototype.isAGoodLinkToCrawl = function(result, currentDepth, parentUri,
 
 }
 
-Crawler.prototype.registerPlugin = function (plugin) {
-    this.pm.registerPlugin(plugin);
+function registerPlugin(plugin) {
+    pm.registerPlugin(plugin);
 }
 
-Crawler.prototype.unregisterPlugin = function (plugin) {
-    this.pm.unregisterPlugin(plugin);
+function unregisterPlugin(plugin) {
+    pm.unregisterPlugin(plugin);
 }
 
 /**
@@ -638,7 +618,7 @@ Crawler.prototype.unregisterPlugin = function (plugin) {
  * @param callback(error, depth)
  *
  */
-var updateDepth = function(parentUri, linkUri, callback) {
+function updateDepth(parentUri, linkUri, callback) {
 
     var depths = {parentUri : parentUri, linkUri : linkUri, parentDepth : 0, linkDepth : 0};
     var execFns = async.seq(getDepths , calcultateDepths , saveDepths);
@@ -660,7 +640,7 @@ var updateDepth = function(parentUri, linkUri, callback) {
  *        {parentUri : parentUri, linkUri : linkUri}
  * @param callback(error, depth)
  */
-var getDepths = function (depths, callback) {
+function getDepths(depths, callback) {
 
     async.parallel([
         async.apply(store.getStore().getDepth.bind(store.getStore()), depths.parentUri),
@@ -685,7 +665,7 @@ var getDepths = function (depths, callback) {
  * @param callback(error, depth)
  */
 
-var calcultateDepths = function (depths, callback) {
+function calcultateDepths(depths, callback) {
     if (depths.parentDepth) {
         // if a depth of the links doesn't exist : assign the parehtDepth +1
         // if not, this link has been already found in the past => don't update its depth
@@ -708,7 +688,7 @@ var calcultateDepths = function (depths, callback) {
  *        {parentUri : parentUri, linkUri : linkUri}
  * @param callback(error, depth)
  */
-var saveDepths = function(depths, callback) {
+function saveDepths(depths, callback) {
 
   async.parallel([
       async.apply(store.getStore().setDepth.bind(store.getStore()), depths.parentUri, depths.parentDepth ),
@@ -719,4 +699,9 @@ var saveDepths = function(depths, callback) {
   });
 }
 
-module.exports.Crawler = Crawler;
+module.exports.init = init;
+module.exports.queue = queue;
+module.exports.registerPlugin = registerPlugin;
+module.exports.unregisterPlugin = unregisterPlugin;
+
+}());

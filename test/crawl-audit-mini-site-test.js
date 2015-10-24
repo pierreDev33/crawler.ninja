@@ -12,14 +12,7 @@ var crawler = require("../index.js");
 describe('Audit Plugin', function() {
 
         it('Audit a mini site - all links images ', function(done) {
-
-            var c = new crawler.Crawler();
-            var audit = new seoaudit.Plugin();
-            var log = new logger.Plugin();
-            c.registerPlugin(audit);
-            c.registerPlugin(log);
-
-            c.on("end", function() {
+            var end = function() {
 
                 //assert(audit.errors.length == 0, "Error during the crawl");
 
@@ -56,27 +49,31 @@ describe('Audit Plugin', function() {
 
                 done();
 
-            });
+            };
+            var audit = new seoaudit.Plugin();
+            var log = new logger.Plugin();
+            crawler.init(null, end);
 
-            c.queue({url : "http://localhost:9991/index.html"});
+            crawler.registerPlugin(audit);
+            crawler.registerPlugin(log);
+            crawler.queue({url : "http://localhost:9991/index.html"});
 
         });
 
 
         it('Audit a mini site - crawl only a.href links ', function(done) {
-            var c = new crawler.Crawler({images : false, links: false /*links = html link tag*/, scripts:false });
-            var audit = new seoaudit.Plugin();
-            //var log = new logger.Plugin();
-            c.registerPlugin(audit);
-            
-            c.on("end", function() {
+
+            var end = function() {
                 //console.log(audit.resources.keys());
                 assert(audit.resources.keys().length == 9);
                 done();
 
-            });
+            };
+            crawler.init({images : false, links: false /*links = html link tag*/, scripts:false }, end );
+            var audit = new seoaudit.Plugin();
+            crawler.registerPlugin(audit);
 
-            c.queue({url : "http://localhost:9991/index.html"});
+            crawler.queue({url : "http://localhost:9991/index.html"});
 
         });
 

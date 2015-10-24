@@ -1,6 +1,6 @@
 {
   "name": "crawler-ninja",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "A web crawler made for the SEO based on plugins. Please wait or contribute ... still in beta",
   "main": "index.js",
   "repository": {
@@ -14,12 +14,10 @@
     "collections": "*",
     "crawler-ninja-logger": "*",
     "crypto": "*",
-    "heapdump": "^0.3.7",
     "request": "*",
-    "riak-js": "*",
-    "robots-parser": "*",
     "simple-proxies": "*",
-    "underscore": "*"
+    "underscore": "*",
+    "heapdump": "^0.3.7"
   },
   "devDependencies": {
     "mocha": "*",
@@ -30,9 +28,8 @@
   "keywords": [
     "web",
     "crawler",
-    "crawler",
-    "seo",
-    "crawler"
+    "web crawler",
+    "seo"
   ],
   "author": "Christophe Lombart",
   "license": "Apache",
