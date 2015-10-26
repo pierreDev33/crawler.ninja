@@ -19,7 +19,7 @@ How to install
 
 Crash course
 ------------
-###How to use an existing plugin ?
+##How to use an existing plugin ?
 
 ```javascript
 var crawler = require("crawler-ninja");
@@ -47,7 +47,7 @@ When the crawl ends, the end callback is called (secong argument of the function
 
 If you want used the default options (see below), you can pass null in the first argument of the method init.
 
-###Create a new plugin
+##Create a new plugin
 
 The following code show you the events callbacks that your have to implement for creating a new plugin.
 
@@ -147,7 +147,7 @@ Option references
 -----------------
 
 
-### The main crawler config options
+## The main crawler config options
 
 You can pass change/overide the default crawl options by using the init method.
 
@@ -189,7 +189,7 @@ items in the queue() calls if you want them to be specific to that item (overwri
 
 
 
-### Add your own crawl rules
+## Add your own crawl rules
 
 If the predefined options are not sufficient, you can customize which kind of links to crawl by implementing a callback function in the crawler config object. This is a nice way to limit the crawl scope in function of your needs. The following options crawls only dofollow links.
 
@@ -266,7 +266,7 @@ function crawl(proxyList){
     maxConnections : 10
   }
   var consolePlugin = new cs.Plugin();
-  crawler.init(options, done);
+  crawler.init(options, done, proxyList);
   crawler.registerPlugin(consolePlugin);
   crawler.queue({url : "http://www.mysite.com"});
 }

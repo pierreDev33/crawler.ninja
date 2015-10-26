@@ -32,7 +32,7 @@ describe('Audit Plugin', function() {
                 assert(audit.duplicateContents.get("a02ecf7dbed6115812462ff0f55c5cd03bb8f3b8").length == 2);
 
                 var outLinks = audit.outLinks.get("http://localhost:9991/markdown.html");
-                assert(outLinks.length == 27, "incorrect outlink, it should be : " + outLinks.length);
+                assert(outLinks.length == 28, "incorrect outlink, it should be : " + outLinks.length);
                 assert(_.filter(outLinks,function(page){ return page.isDoFollow == false}).length == 3);
 
                 assert(audit.inLinks.get("http://localhost:9991/markdown.html").length == 13);

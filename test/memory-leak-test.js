@@ -54,7 +54,7 @@ describe('Memory leaks', function() {
             //crawler.registerPlugin(consolePlugin);
 
             //crawler.queue({url : "http://localhost:9991/index.html" });
-            crawler.queue({url : "http://www.cirh.ht/"});
+            crawler.queue({url : "http://www.rtbf.be"});
 
         });
 

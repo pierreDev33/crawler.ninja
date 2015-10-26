@@ -33,7 +33,7 @@ var DEFAULT_CRAWL_IMAGES = true;
 var DEFAULT_PROTOCOLS_TO_CRAWL = ["http", "https"];
 var DEFAULT_FOLLOW_301 = false;
 
-var DEFAULT_LINKS_TYPES = ["canonical", "stylesheet"];
+var DEFAULT_LINKS_TYPES = ["canonical", "stylesheet", "icon"];
 var DEFAULT_USER_AGENT = "NinjaBot";
 var DEFAULT_CACHE = false;
 var DEFAULT_METHOD = 'GET';
@@ -130,7 +130,7 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
       console.log("The end callback is not defined, impossible to run correctly");
       return;
     }
-    
+
     // Error if no options
     if (! options){
 

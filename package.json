@@ -1,6 +1,6 @@
 {
   "name": "crawler-ninja",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "A web crawler made for the SEO based on plugins. Please wait or contribute ... still in beta",
   "main": "index.js",
   "repository": {
@@ -16,8 +16,7 @@
     "crypto": "*",
     "request": "*",
     "simple-proxies": "*",
-    "underscore": "*",
-    "heapdump": "^0.3.7"
+    "underscore": "*"
   },
   "devDependencies": {
     "mocha": "*",

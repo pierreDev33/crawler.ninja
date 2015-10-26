@@ -18,8 +18,8 @@ Plugin.prototype.crawl = function(result, $, callback) {
 
 Plugin.prototype.error = function(error, result, callback) {
 
-     console.log("Error : " + error.code + ',' + + result.method + ',' +
-                 result.uri + ',' + result.responseTime + ',' + (result.proxy ? result.proxy : "no-proy"));
+     console.log(error.code + ',ERROR,' +
+                 result.uri + ',no-response-time,' + (result.proxy ? result.proxy : "no-proxy"));
      callback();
 
 };
