@@ -3,9 +3,11 @@ var crawler     = require("../index.js");
 var cs          = require("../plugins/console-plugin.js");
 var testSite    = require("./website-2/start.js").site;
 var proxyLoader = require("simple-proxies/lib/proxyfileloader");
+var log         = require("crawler-ninja-logger").Logger;
 
-var heapdump    = require('heapdump');
+//var heapdump    = require('heapdump');
 
+log.level("debug");
 
 var proxyListTest = null;
 
@@ -32,7 +34,7 @@ describe('Memory leaks', function() {
 
           });
         });
-        it.skip('should crawl without memory leaks', function(done) {
+        it.skip('should crawl a big site without memory leaks', function(done) {
             this.timeout(3000000);
             /*
             setInterval(function(){
@@ -50,8 +52,8 @@ describe('Memory leaks', function() {
             }
             var consolePlugin = new cs.Plugin();
             //crawler.init(options, done, proxyListTest);
-            crawler.init(options, done);
-            //crawler.registerPlugin(consolePlugin);
+            crawler.init(options, done, null);
+            crawler.registerPlugin(consolePlugin);
 
             //crawler.queue({url : "http://localhost:9991/index.html" });
             crawler.queue({url : "http://www.rtbf.be"});

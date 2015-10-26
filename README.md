@@ -14,12 +14,19 @@ Help & Forks welcomed ! or please wait ... work in progress !
 How to install
 --------------
 
-    $ npm install crawler-ninja --save
+$ npm install crawler-ninja --save
 
+
+On MacOs, if you got some issues like "Agreeing to the Xcode/iOS license requires admin privileges, please re-run as root via sudo", run the following command in the terminal :
+
+$ sudo xcodebuild -license
+
+Then accept the license &  rerun :
+$ npm install crawler-ninja --save  (sudo is not required)
 
 Crash course
 ------------
-##How to use an existing plugin ?
+### How to use an existing plugin ?
 
 ```javascript
 var crawler = require("crawler-ninja");
@@ -47,7 +54,7 @@ When the crawl ends, the end callback is called (secong argument of the function
 
 If you want used the default options (see below), you can pass null in the first argument of the method init.
 
-##Create a new plugin
+## Create a new plugin
 
 The following code show you the events callbacks that your have to implement for creating a new plugin.
 
@@ -147,7 +154,7 @@ Option references
 -----------------
 
 
-## The main crawler config options
+### The main crawler config options
 
 You can pass change/overide the default crawl options by using the init method.
 
@@ -189,7 +196,7 @@ items in the queue() calls if you want them to be specific to that item (overwri
 
 
 
-## Add your own crawl rules
+### Add your own crawl rules
 
 If the predefined options are not sufficient, you can customize which kind of links to crawl by implementing a callback function in the crawler config object. This is a nice way to limit the crawl scope in function of your needs. The following options crawls only dofollow links.
 
@@ -273,19 +280,25 @@ function crawl(proxyList){
 
 ```
 
-Using the crawl logger in your own plugin
-------------------------------------------
+Using the crawl logger
+----------------------
 
-The current crawl logger is based on [Bunyan](https://github.com/trentm/node-bunyan).
-It logs the all crawl actions & errors in the file "./logs/crawler.log" and a more detailled log into another file "./logs/debug.log".
+The current crawl logger is based on [Bunyan](https://github.com/trentm/node-bunyan). It logs the all crawl actions & errors in the file "./logs/crawler.log".
+You can query the log file after the crawl in order to filter errors or other info (see the Bunyan doc for more informations).
 
-You can query the log file after the crawl (see the Bunyan doc for more informations) in order to filter errors or other info.
+### Change the crawl log level
 
-You can also use the current logger module in your own Plugin.
+By default, the logger uses the level INFO. You can change this level within the init function :
 
-*Use default loggers*
+```javascript
+crawler.init(options, done, proxyList, "debug");
+```
+The previous code init the crawler with a dedug level.
 
-You have to install the logger module into your own project :
+
+### Use the default logger in your own plugin
+
+You have to install the logger module into your own plugin project :
 
 ```
 npm install crawler-ninja-logger --save
@@ -309,7 +322,7 @@ The crawler logs with the following structure
 log.info({"url" : "url", "step" : "step", "message" : "message", "options" : "options"});
 ```
 
-*Create a new logger for your plugin*
+### Create a new logger for your plugin
 
 Depending on your needs, you can create additional log files.
 
@@ -325,9 +338,6 @@ myLog.info({url:"http://www.google.com", pageRank : 10});
 
 Please, feel free to read the code in log-plugin to get more info on how to log from you own plugin.  
 
-More features & flexibilities will be added in the upcoming releases.
-
-
 Control the crawl rate
 -----------------------
 All sites cannot support an intensive crawl. This crawl provides 2 solutions to control the crawl rates :
@@ -335,7 +345,7 @@ All sites cannot support an intensive crawl. This crawl provides 2 solutions to 
 - explicit : you can specify the crawl rate in the crawler config. This setting is unique for all hosts.
 
 
-**Implicit setting**
+### Implicit setting
 
 Without changing the crawler config, it will decrease the crawl rate after 5 timeouts errors on a host.Then, it will force a rate of 200ms between each requests. If new 5 timeout errors still occur, it will use a rate of 350ms and after that a rate of 500ms between all requests for this host. If the timeouts persists, the crawler will cancel the crawl on that host.
 
@@ -355,7 +365,7 @@ var options = {
 ```
 Note that an higher value for maxErrors can decrease the number of analyzed pages. You can assign the value -1 to maxErrors in order to desactivate the implicit setting
 
-**Explicit setting**
+### Explicit setting
 
 In this configuration, you are apply the same crawl rate for all requests on all hosts (even for successful requests).
 
@@ -460,3 +470,7 @@ ChangeLog
 - Better memory management
 - code cleanup
 - bug fixs
+
+0.1.15
+- Set the log to "INFO" by default. The function init can be used to change the log level
+- Review README.md

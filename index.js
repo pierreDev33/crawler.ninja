@@ -44,6 +44,7 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
 
 (function () {
 
+
   var globalOptions = {};
 
   // assign the default updateDepth method used to calculate the crawl depth
@@ -83,10 +84,11 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
    *  + all options provided by nodejs request : https://github.com/request/request
    *
    * @param callback() called when all URLs have been crawled
-   * @param proxies to used when making http requests
+   * @param proxies to used when making http requests (optional)
+   * @param logLevel : a new log level (eg. debug) (oprional, default value is info)
    */
 
-  function init(config, callback, proxies) {
+  function init(config, callback, proxies, logLevel) {
 
       if (! callback) {
         log.error("The end callback is not defined");
@@ -117,6 +119,13 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
       endCallback = callback;
       requester.init(globalOptions.maxConnections, crawl, endCallback, proxies);
 
+      if (logLevel) {
+        console.log("Change Log level into :" + logLevel);
+        log.level(logLevel);
+      }
+      else {
+        log.level("info"); // By default debug level is not activated
+      }
   }
 
   /**

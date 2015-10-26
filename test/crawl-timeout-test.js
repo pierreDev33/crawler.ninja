@@ -62,7 +62,7 @@ describe('Timeout & error tests', function() {
         });
 
 
-        it.only('Should stop to crawl the site if there are too many errors', function(done) {
+        it.skip('Should stop to crawl the site if there are too many errors', function(done) {
             this.timeout(60000);
 
             var audit = new seoaudit.Plugin();
