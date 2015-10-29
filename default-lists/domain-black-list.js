@@ -143,7 +143,8 @@ module.exports.list = function () {
     "zh.wikipedia",
     "zooppa",
     "zanox",
-    "ovh"
+    "ovh",
+    "webadmax.com"
   ];
 
 }
