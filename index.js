@@ -4,7 +4,7 @@ var _           = require("underscore");
 var async       = require('async');
 var log         = require("crawler-ninja-logger").Logger;
 var requester   = require("./lib/queue-requester");
-var URI         = require('./lib/uri.js');
+var URI         = require('crawler-ninja-uri');
 var html        = require("./lib/html.js");
 var store       = require("./lib/store/store.js");
 var plugin      = require("./lib/plugin-manager.js");
@@ -80,6 +80,8 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
    *  - depthLimit            : the depth limit for the crawl
    *  - followRedirect        : if true, the crawl will not return the 301, it will follow directly the redirection
    *  - proxyList             : the list of proxies (see the project simple-proxies on npm)
+   *  - storeModuleName       : the npm nodule name used for the store implementation, by default memory-store
+   *  - storeParams           : the params to pass to the store module when create it.
    *
    *  + all options provided by nodejs request : https://github.com/request/request
    *

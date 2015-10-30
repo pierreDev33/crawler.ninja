@@ -22,7 +22,7 @@ On MacOs, if you got some issues like "Agreeing to the Xcode/iOS license require
 $ sudo xcodebuild -license
 
 Then accept the license &  rerun :
-$ npm install crawler-ninja --save  (sudo is not required)
+$ npm install crawler-ninja --save  (sudo is not required, in theory)
 
 Crash course
 ------------
@@ -52,14 +52,13 @@ You can register all plugins you want for each crawl by using the function regis
 The Crawler calls plugin functions depending on what kind of object is crawling (html pages, css, script, links, redirection, ...).
 When the crawl ends, the end callback is called (secong argument of the function init).
 
-If you want used the default options (see below), you can pass null in the first argument of the method init.
+You can also reduce the scope of the crawl by using the different crawl options (see below the section :  option references).
 
 ## Create a new plugin
 
-The following code show you the events callbacks that your have to implement for creating a new plugin.
+The following code show you the functions that your have to implement for creating a new plugin.
 
-This is not mandatory to implement all plugin functions. You can also reduce the scope of the crawl by using the different crawl options (see below the section :  option references).
-
+This is not mandatory to implement all plugin functions.
 
 ```javascript
 function Plugin() {
@@ -172,7 +171,7 @@ crawler.init({ scripts : false, links : false,images : false, ... }, function(){
 - firstExternalLinkOnly : crawl only the first link found for an external domain/host. externalHosts and/or externalDomains should be = true
 - scripts               : if true crawl script tags, default = true.
 - links                 : if true crawl link tags, default = true.
-- linkTypes             : the type of the links tags to crawl (match to the rel attribute), default = ["canonical", "stylesheet"].
+- linkTypes             : the type of the links tags to crawl (match to the rel attribute), default = ["canonical", "stylesheet", "icon"].
 - images                : if true crawl images, default = true.
 - depthLimit            : the depth limit for the crawl, default is no limit.
 - protocols             : list of the protocols to crawl, default = ["http", "https"].
@@ -293,7 +292,7 @@ By default, the logger uses the level INFO. You can change this level within the
 ```javascript
 crawler.init(options, done, proxyList, "debug");
 ```
-The previous code init the crawler with a dedug level.
+The previous code init the crawler with a dedug level. If you don't use proxies, set the proxyList argument to null.
 
 
 ### Use the default logger in your own plugin
@@ -381,6 +380,10 @@ var options = {
 
 
 If both settings are applied for one crawl, the implicit setting will be forced by the crawler after the "maxErrors".
+
+Utilities
+---------
+- See on npm the module "crawler-ninja-uri" that can be used for extracting info and transforming URLs
 
 Current Plugins
 ---------------
@@ -474,3 +477,7 @@ ChangeLog
 0.1.15
 - Set the log to "INFO" by default. The function init can be used to change the log level
 - Review README.md
+
+0.1.16
+- Externalize URI.js in order to used it into Stores and plugins.
+- Refactoring in order to support different kind of Stores (Redis, ...) used to save crawl infos.

@@ -1,7 +1,7 @@
 var crypto = require('crypto');
 var Map    = require("collections/fast-map");
 var Set    = require("collections/fast-set");
-var URI    = require('../lib/uri.js');
+var URI    = require('crawler-ninja-uri');
 
 var CONTENT_TYPE_HEADER = "content-type";
 var CONTENT_LENGTH_HEADER = "content-length";

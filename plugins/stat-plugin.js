@@ -2,7 +2,7 @@
  * Basic crawler plugin that can be used to harvest some statistics
  *
  */
-var URI = require('URIjs');
+var URI = require('crawler-ninja-uri');
 
 
 var CONTENT_TYPE_HEADER = "content-type";
@@ -48,9 +48,7 @@ Plugin.prototype.crawl = function(result, $, callback) {
       this.addContentType(contentType);
     }
 
-
-    var uri = URI(result.uri);
-    this.addHostname(uri.hostname());
+    this.addHostname(URI.host(result.uri));
 
     if ($) {
         this.data.numberOfHTMLs++;

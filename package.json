@@ -8,11 +8,11 @@
     "url": "https://github.com/christophebe/crawler.ninja"
   },
   "dependencies": {
-    "URIjs": "*",
+    "crawler-ninja-uri" : "*",
+    "crawler-ninja-logger": "*",
     "async": " *",
     "cheerio": "*",
     "collections": "*",
-    "crawler-ninja-logger": "*",
     "crypto": "*",
     "request": "*",
     "simple-proxies": "*",
