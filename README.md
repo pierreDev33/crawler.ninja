@@ -480,4 +480,4 @@ ChangeLog
 
 0.1.16
 - Externalize URI.js in order to used it into Stores and plugins.
-- Refactoring in order to support different kind of Stores (Redis, ...) used to save crawl infos.
+- Review log info on error
