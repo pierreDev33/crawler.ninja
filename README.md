@@ -479,5 +479,9 @@ ChangeLog
 - Review README.md
 
 0.1.16
-- Externalize URI.js in order to used it into Stores and plugins.
+- Externalize URI.js in order to used it into Stores and plugins
 - Review log info on error
+
+0.1.17
+- Better 301 management on crawl startup
+- Bug fixs

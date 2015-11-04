@@ -1,6 +1,8 @@
 module.exports.list = function () {
 
   return [
+    "mozilla.org",
+    "mozilla.fr",
     "microsoft.com",
     "mozilla.net",
     "google",

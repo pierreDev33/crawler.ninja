@@ -4,6 +4,7 @@ var _           = require("underscore");
 var async       = require('async');
 var log         = require("crawler-ninja-logger").Logger;
 var requester   = require("./lib/queue-requester");
+var http        = require("./lib/http-request.js");
 var URI         = require('crawler-ninja-uri');
 var html        = require("./lib/html.js");
 var store       = require("./lib/store/store.js");
@@ -31,6 +32,9 @@ var DEFAULT_CRAWL_LINKS = true;     // Crawl <link>
 var DEFAULT_CRAWL_IMAGES = true;
 
 var DEFAULT_PROTOCOLS_TO_CRAWL = ["http", "https"];
+
+// The Http request doesn't follow redirect
+// in order to catch/log/manage them in some plugins
 var DEFAULT_FOLLOW_301 = false;
 
 var DEFAULT_LINKS_TYPES = ["canonical", "stylesheet", "icon"];
@@ -167,10 +171,7 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
 
     // if String, we expect to receive an url
     if (_.isString(options)) {
-      store.getStore().addStartUrl(options, function(error) {
-          requester.queue(addDefaultOptions({uri:options, url:options}, globalOptions));
-      });
-
+      addInQueue(addDefaultOptions({uri:options, url:options}, globalOptions));
     }
     // Last possibility, this is a json
     else {
@@ -185,11 +186,20 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
                   });
       }
       else {
-        store.getStore().addStartUrl(_.has(options, "url") ? options.url : options.uri, function(error) {
-            requester.queue(addDefaultOptions(options, globalOptions));
-        });
+        addInQueue(addDefaultOptions(options, globalOptions));
       }
     }
+
+}
+
+function addInQueue(options) {
+
+  http.checkRedirect(_.has(options, "url") ? options.url : options.uri, function(error, targetUrl){
+    store.getStore().addStartUrls([targetUrl, _.has(options, "url") ? options.url : options.uri], function(error) {
+        requester.queue(options);
+    });
+  });
+
 
 }
 
@@ -304,8 +314,8 @@ function crawl(error, result, callback) {
     // or apply a redirect
     async.parallel([
       async.apply(pm.crawl.bind(pm), result, $),
-      async.apply(analyzeHTML, result, $),
       async.apply(applyRedirect, result),
+      async.apply(analyzeHTML, result, $),
     ], function(error) {
         result = null;
         callback(error);
@@ -322,6 +332,8 @@ function applyRedirect(result, callback) {
       var to = result.headers["location"];
       var to = URI.linkToURI(from, to);
 
+      // Send the redirect info to the plugins &
+      // Add the link "to" the request queue
       pm.crawlRedirect(from, to, result.statusCode, function(){
         requester.queue(buildNewOptions(result,to));
         callback();
@@ -330,7 +342,6 @@ function applyRedirect(result, callback) {
   else {
       callback();
   }
-
 
 }
 
@@ -342,7 +353,6 @@ function applyRedirect(result, callback) {
  *        is not an HTML
  */
 function analyzeHTML(result, $, callback) {
-
   // if $ is note defined, this is not a HTML page with an http status 200
   if (! $) {
     return callback();
@@ -563,10 +573,16 @@ function isAGoodLinkToCrawl(result, currentDepth, parentUri, link, anchor, isDoF
   store.getStore().isStartFromUrl(parentUri, link, function(error, startFrom){
 
         // 1. Check if we need to crawl other hosts & domains
-        if ((! startFrom.link.isStartFromHost && ! result.externalHosts) &&
-           (! (! startFrom.link.isStartFromDomains && result.externalDomains))) {
-            log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - no external host or domain"});
-            return callback(null, false);
+        if (startFrom.link.isStartFromDomain && ! startFrom.link.isStartFromHost && ! result.externalHosts) {
+          //console.log("External host : " + link);
+          log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - no external host"});
+          return callback(null, false);
+        }
+
+        if (! startFrom.link.isStartFromDomain &&  ! result.externalDomains) {
+
+          log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - no external domain"});
+          return callback(null, false);
         }
 
         // 2. Check if we need to crawl only the first pages of external hosts/domains
