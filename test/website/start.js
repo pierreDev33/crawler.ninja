@@ -53,6 +53,11 @@ site.get('/timeout3', function(req, res) {
 });
 
 
+site.get('/timeout4', function(req, res) {
+  setTimeout(function(){
+    res.status(200).json({ message: 'This is a long process' });
+  }, 500);
+});
 
 
 site.use(serveStatic(TEST_SITE_FOLDER));
