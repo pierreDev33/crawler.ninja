@@ -24,5 +24,13 @@ Plugin.prototype.error = function(error, result, callback) {
 
 };
 
+Plugin.prototype.recrawl = function(error, result, callback) {
+
+     console.log(error.code + ',RECRAWL(' + result.currentRetries + '),' +
+                 result.uri + ',no-response-time,' + (result.proxy ? result.proxy : "no-proxy") + " delay:" + result.retryTimeout);
+     callback();
+
+};
+
 
 module.exports.Plugin = Plugin;

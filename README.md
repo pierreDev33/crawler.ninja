@@ -164,7 +164,7 @@ crawler.init({ scripts : false, links : false,images : false, ... }, function(){
 ```
 - skipDuplicates        : if true skips URIs that were already crawled, default is true.
 - userAgent             : String, defaults to "NinjaBot"
-- maxConnections        : the number of connections used to crawl, default is 30.
+- maxConnections        : the number of connections used to crawl, default is 5.
 - rateLimits            : number of milliseconds to delay between each requests , default = 0.
 - externalDomains       : if true crawl external domains. This option can crawl a lot of different linked domains, default = false.
 - externalHosts         : if true crawl the others hosts on the same domain, default = false.
@@ -175,12 +175,9 @@ crawler.init({ scripts : false, links : false,images : false, ... }, function(){
 - images                : if true crawl images, default = true.
 - depthLimit            : the depth limit for the crawl, default is no limit.
 - protocols             : list of the protocols to crawl, default = ["http", "https"].
-- timeout               : max timeout per requests in milliseconds, default = 20000.
-- retryTimeout          : Time to wait before retrying the same request due to a timeout, default : 10000
-- retries               : number of retries if the request is on timeout, default = 3.
-- retryTimeout          : number of milliseconds to wait before retrying,  default = 10000.
-- maxErrors             : number of timeout errors before forcing to decrease the crawl rate, default is 5. If the value is -1, there is no check.
-- errorRates            : an array of crawl rates to apply if there are no too many errors on one host, default : [200,350,500] (in ms)
+- timeout               : timeout per requests in milliseconds (Default 20000).
+- retries               : number of retries if the request fails (default 3).
+- retryTimeout          : number of milliseconds to wait before retrying (Default 10000).
 - followRedirect        : if true, the crawl will not return the 301, it will follow directly the redirection, default is false.
 - referer               : String, if truthy sets the HTTP referer header
 - domainBlackList       : The list of domain names (without tld) to avoid to crawl (an array of String). The default list is in the file : /default-lists/domain-black-list.js
@@ -339,34 +336,7 @@ Please, feel free to read the code in log-plugin to get more info on how to log 
 
 Control the crawl rate
 -----------------------
-All sites cannot support an intensive crawl. This crawl provides 2 solutions to control the crawl rates :
-- implicit : the crawl decrease the crawl rate if there are too many timeouts on a host. the crawl rate is controlled for each crawled hosts separately.
-- explicit : you can specify the crawl rate in the crawler config. This setting is unique for all hosts.
-
-
-### Implicit setting
-
-Without changing the crawler config, it will decrease the crawl rate after 5 timeouts errors on a host.Then, it will force a rate of 200ms between each requests. If new 5 timeout errors still occur, it will use a rate of 350ms and after that a rate of 500ms between all requests for this host. If the timeouts persists, the crawler will cancel the crawl on that host.
-
-You can change the default values for this implicit setting (5 timeout errors & rates = 200, 350, 500ms) in the options param. Here is an example :
-
-```javascript
-
-var options = {
-  // new values for the implicit setting
-  maxErrors : 5,
-  errorRates : [300, 600, 900]
-
-  // add here other overide options
-  // ...
-};
-
-```
-Note that an higher value for maxErrors can decrease the number of analyzed pages. You can assign the value -1 to maxErrors in order to desactivate the implicit setting
-
-### Explicit setting
-
-In this configuration, you are apply the same crawl rate for all requests on all hosts (even for successful requests).
+All sites cannot support an intensive crawl. You can specify the crawl rate in the crawler config. The crawler will you are apply the same crawl rate for all requests on all hosts (even for successful requests).
 
 ```javascript
 
@@ -378,8 +348,6 @@ var options = {
 
 ```
 
-
-If both settings are applied for one crawl, the implicit setting will be forced by the crawler after the "maxErrors".
 
 Utilities
 ---------
@@ -485,3 +453,9 @@ ChangeLog
 0.1.17
 - Better 301 management on crawl startup
 - Bug fixs
+
+0.1.18
+- Simplify the options used for the error management (remove some of them)
+- Gives the possibility to track a URL recrawl by the plugins
+- Bug fix
+- Review README.md

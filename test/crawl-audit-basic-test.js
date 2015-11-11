@@ -1,7 +1,7 @@
 var assert    = require("assert");
 var _         = require("underscore");
 var seoaudit  = require("../plugins/audit-plugin.js");
-var logger    = require("../plugins/log-plugin.js");
+var cs        = require("../plugins/console-plugin.js");
 
 var testSite  = require("./website/start.js").site;
 
@@ -12,18 +12,16 @@ describe('Audit Plugin Basic tests', function() {
 
 
         it('Should return an error for an invalid site', function(done) {
-
             var audit = new seoaudit.Plugin();
             var end = function(){
-
-                assert(audit.errors.length == 1);
+                assert(audit.errors.length == 2);
                 done();
 
             };
-            crawler.init(null, end);
+            crawler.init({ externalDomains :true, externalHosts : true, retries : 0}, end);
             crawler.registerPlugin(audit);
 
-            crawler.queue({url : "http://test:1234"});
+            crawler.queue({url : "http://localhost:9999/error.html" });
 
         });
 
@@ -98,8 +96,8 @@ describe('Audit Plugin Basic tests', function() {
         it('Should crawl images', function(done) {
 
             var audit = new seoaudit.Plugin();
+            //var cons = new cs.Plugin();
             var end = function(){
-                //console.log("Unit test : end");
                 var resource = audit.resources.get("http://localhost:9999/200x200-image.jpg");
                 assert(resource.contentType =='image/jpeg');
 
@@ -109,6 +107,8 @@ describe('Audit Plugin Basic tests', function() {
 
             crawler.init(null, end);
             crawler.registerPlugin(audit);
+            //crawler.registerPlugin(cons);
+
             crawler.queue({url : "http://localhost:9999/page1.html"});
 
         });
@@ -173,9 +173,8 @@ describe('Audit Plugin Basic tests', function() {
             };
 
             var audit = new seoaudit.Plugin();
-            crawler.init({externalDomains : true}, end);
+            crawler.init({externalDomains : true, retries : 0}, end);
             crawler.registerPlugin(audit);
-
             crawler.queue({url : "http://localhost:9999/page5.html"});
 
         });

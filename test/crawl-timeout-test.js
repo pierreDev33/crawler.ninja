@@ -29,30 +29,4 @@ describe('Timeout & error tests', function() {
 
         });
 
-        it.skip('Should crawl the complete site with timeout & decreasing crawl rate', function(done) {
-            this.timeout(60000);
-            var audit = new seoaudit.Plugin();
-            //var cons = new cs.Plugin();
-
-            var end = function(){
-
-                var resource = audit.resources.get("http://localhost:9999/timeout");
-                //console.log(audit.resources.get("http://localhost:9999/timeout"));
-                assert(resource.statusCode == 408);
-                assert(audit.outLinks.get("http://localhost:9999/page4.html")[0].page == "http://localhost:9999/timeout");
-                assert(audit.outLinks.get("http://localhost:9999/page4.html")[1].page == "http://localhost:9999/");
-                assert(audit.inLinks.get("http://localhost:9999/timeout")[0].page == "http://localhost:9999/page4.html");
-
-                done();
-
-            };
-
-            crawler.init({timeout: 100, retryTimeout : 200, maxErrors:5, retries:20 }, end);
-            crawler.registerPlugin(audit);
-            //crawler.registerPlugin(cons);
-            crawler.queue({url : "http://localhost:9999/page4.html"});
-
-
-        });
-
 });

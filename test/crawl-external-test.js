@@ -27,7 +27,7 @@ describe('External Links', function() {
         });
 
 
-        it.skip('Should crawl external links but not entire domains', function(done) {
+        it('Should crawl external links but not entire domains', function(done) {
             this.timeout(3000);
             var end = function(){
 
@@ -55,32 +55,6 @@ describe('External Links', function() {
             var audit = new seoaudit.Plugin();
             crawler.registerPlugin(audit);
             crawler.queue({url : "http://www.youtube.com"});
-
-        });
-
-
-        it.skip('Should crawl external links & external domains with a firstExternalLinkOnly', function(done) {
-            this.timeout(900000);
-            var end = function(){
-
-                //assert(! audit.resources.get("http://www.nytimes.com"));
-                //assert(! audit.resources.get("http://www.nytimes.com/"));
-                //assert(audit.externalLinks.get("http://www.nytimes.com/") != null);
-                done();
-
-            };
-
-            crawler.init({
-              externalHosts : true,
-              externalDomains : true,
-              depthLimit : 2
-            }, end);
-
-            //var audit = new seoaudit.Plugin(c);
-            var log = new logger.Plugin();
-            crawler.registerPlugin(log);
-
-            crawler.queue({url : "http://localhost:9999/page12.html"});
 
         });
 

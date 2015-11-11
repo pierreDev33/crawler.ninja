@@ -14,15 +14,13 @@ var domainBlackList  = require("./default-lists/domain-black-list.js").list();
 var suffixBlackList  = require("./default-lists/suffix-black-list.js").list();
 
 
-var DEFAULT_NUMBER_OF_CONNECTIONS = 10;
+var DEFAULT_NUMBER_OF_CONNECTIONS = 5;
 var DEFAULT_DEPTH_LIMIT = -1; // no limit
 var DEFAULT_TIME_OUT = 20000;
 var DEFAULT_RETRIES = 3;
 var DEFAULT_RETRY_TIMEOUT = 10000;
 var DEFAULT_SKIP_DUPLICATES = true;
 var DEFAULT_RATE_LIMITS = 0;
-var DEFAULT_MAX_ERRORS = 5;
-var DEFAULT_ERROR_RATES = [200, 350, 500];
 
 var DEFAULT_FIRST_EXTERNAL_LINK_ONLY = false;
 var DEFAULT_CRAWL_EXTERNAL_DOMAINS = false;
@@ -64,7 +62,10 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
    * @param config used to customize the crawler.
    *
    *  The current config attributes are :
-   *  - maxConnections        : the number of connections used to crawl - default is 10
+   *  - skipDuplicates        : if true skips URIs that were already crawled - default is true
+   *  - maxConnections        : the number of connections used to crawl - default is 5
+   *  - rateLimits            : number of milliseconds to delay between each requests (Default 0).
+   *                            Note that this option will force crawler to use only one connection
    *  - externalDomains       : if true crawl the  external domains. This option can crawl a lot of different linked domains, default = false.
    *  - externalHosts         : if true crawl the others hosts on the same domain, default = false.
    *  - firstExternalLinkOnly : crawl only the first link found for external domains/hosts. externalHosts or externalDomains should be = true
@@ -76,11 +77,6 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
    *  - timeout               : timeout per requests in milliseconds (Default 20000)
    *  - retries               : number of retries if the request fails (default 3)
    *  - retryTimeout          : number of milliseconds to wait before retrying (Default 10000)
-   *  - maxErrors             : number of timeout errors before changing the crawl rate, default is 5,
-      - errorRates            : list of rates to used when too many timeout errors occur.
-   *  - skipDuplicates        : if true skips URIs that were already crawled - default is true
-   *  - rateLimits            : number of milliseconds to delay between each requests (Default 0).
-   *                            Note that this option will force crawler to use only one connection
    *  - depthLimit            : the depth limit for the crawl
    *  - followRedirect        : if true, the crawl will not return the 301, it will follow directly the redirection
    *  - proxyList             : the list of proxies (see the project simple-proxies on npm)
@@ -123,7 +119,7 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
 
       // Init the crawl queue
       endCallback = callback;
-      requester.init(globalOptions.maxConnections, crawl, endCallback, proxies);
+      requester.init(globalOptions.maxConnections, crawl, recrawl, endCallback, proxies);
 
       if (logLevel) {
         console.log("Change Log level into :" + logLevel);
@@ -213,8 +209,7 @@ function addInQueue(options) {
  function addDefaultOptions(options, defaultOptions) {
 
     _.defaults(options, defaultOptions);
-    options.maxRetries = options.retries;
-
+    options.currentRetries = 0;
     return options;
 
 }
@@ -234,11 +229,8 @@ function addInQueue(options) {
     // Copy only options attributes that are in the options used for the previous request
     // Could be more simple ? ;-)
     o =  _.extend(o, _.pick(options, _.without(_.keys(o), "url", "uri")));
-
-    //Reset setting used for retries when an error occurs like a timeout
-    o.maxRetries = o.retries;
     o.depthLimit = options.depthLimit;
-
+    o.currentRetries = 0;
 
     if (options.canCrawl) {
       o.canCrawl = options.canCrawl;
@@ -258,29 +250,26 @@ function createDefaultConfig(url) {
   var config = {
       method                  : DEFAULT_METHOD,
       referer                 : DEFAULT_REFERER,
-      maxConnections          : DEFAULT_NUMBER_OF_CONNECTIONS,
-      timeout                 : DEFAULT_TIME_OUT,
-      retries                 : DEFAULT_RETRIES,
-      maxRetries              : DEFAULT_RETRIES,
-      retryTimeout            : DEFAULT_RETRY_TIMEOUT,
-      maxErrors               : DEFAULT_MAX_ERRORS,
-      errorRates              : DEFAULT_ERROR_RATES,
       skipDuplicates          : DEFAULT_SKIP_DUPLICATES,
+      maxConnections          : DEFAULT_NUMBER_OF_CONNECTIONS,
       rateLimits              : DEFAULT_RATE_LIMITS,
       externalDomains         : DEFAULT_CRAWL_EXTERNAL_DOMAINS,
       externalHosts           : DEFAULT_CRAWL_EXTERNAL_HOSTS,
       firstExternalLinkOnly   : DEFAULT_FIRST_EXTERNAL_LINK_ONLY,
-      protocols               : DEFAULT_PROTOCOLS_TO_CRAWL,
-      depthLimit              : DEFAULT_DEPTH_LIMIT,
-      followRedirect          : DEFAULT_FOLLOW_301,
-      images                  : DEFAULT_CRAWL_IMAGES,
+      scripts                 : DEFAULT_CRAWL_SCRIPTS,
       links                   : DEFAULT_CRAWL_LINKS,
       linkTypes               : DEFAULT_LINKS_TYPES,
-      scripts                 : DEFAULT_CRAWL_SCRIPTS,
+      images                  : DEFAULT_CRAWL_IMAGES,
+      protocols               : DEFAULT_PROTOCOLS_TO_CRAWL,
+      timeout                 : DEFAULT_TIME_OUT,
+      retries                 : DEFAULT_RETRIES,
+      retryTimeout            : DEFAULT_RETRY_TIMEOUT,
+      depthLimit              : DEFAULT_DEPTH_LIMIT,
+      followRedirect          : DEFAULT_FOLLOW_301,
       userAgent               : DEFAULT_USER_AGENT,
       domainBlackList         : domainBlackList,
       suffixBlackList         : suffixBlackList,
-      storeModuleName         : DEFAULT_STORE_MODULE,
+      storeModuleName         : DEFAULT_STORE_MODULE
 
   };
 
@@ -328,6 +317,9 @@ function crawl(error, result, callback) {
 
 }
 
+function recrawl(error, result, callback) {
+  pm.recrawl(error,result, callback);
+}
 
 function applyRedirect(result, callback) {
   // if 30* & followRedirect = false => chain 30*
@@ -576,7 +568,7 @@ function checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, endCall
 function isAGoodLinkToCrawl(result, currentDepth, parentUri, link, anchor, isDoFollow, callback) {
 
   store.getStore().isStartFromUrl(parentUri, link, function(error, startFrom){
-
+        
         // 1. Check if we need to crawl other hosts
         if (startFrom.link.isStartFromDomain && ! startFrom.link.isStartFromHost && ! result.externalHosts) {
           //console.log("External host : " + link);

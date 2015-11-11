@@ -10,7 +10,6 @@ var testSite  = require("./website/start.js").site;
 describe('Crawl invalid href', function() {
 
         it('Should return an error for an invalid href', function(done) {
-            this.timeout(3000);
 
             var end = function(){
                 //console.log(audit.resources.keys());
@@ -19,7 +18,7 @@ describe('Crawl invalid href', function() {
 
             };
 
-            crawler.init({externalDomains : true, externalHosts : true}, end);
+            crawler.init({externalDomains : true, externalHosts : true, retries : 0}, end);
             var audit = new seoaudit.Plugin();
             crawler.registerPlugin(audit);
             crawler.queue({url : "http://localhost:9999/page10.html"});
