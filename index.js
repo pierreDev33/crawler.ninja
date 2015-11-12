@@ -19,6 +19,7 @@ var DEFAULT_DEPTH_LIMIT = -1; // no limit
 var DEFAULT_TIME_OUT = 20000;
 var DEFAULT_RETRIES = 3;
 var DEFAULT_RETRY_TIMEOUT = 10000;
+var DEFAULT_RETRY_404 = false;
 var DEFAULT_SKIP_DUPLICATES = true;
 var DEFAULT_RATE_LIMITS = 0;
 
@@ -235,6 +236,7 @@ function addInQueue(options) {
     if (options.canCrawl) {
       o.canCrawl = options.canCrawl;
     }
+
     return o;
 
  }
@@ -269,7 +271,9 @@ function createDefaultConfig(url) {
       userAgent               : DEFAULT_USER_AGENT,
       domainBlackList         : domainBlackList,
       suffixBlackList         : suffixBlackList,
-      storeModuleName         : DEFAULT_STORE_MODULE
+      storeModuleName         : DEFAULT_STORE_MODULE,
+      isExternal              : false,
+      retry404                : DEFAULT_RETRY_404
 
   };
 
@@ -538,11 +542,12 @@ function checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, endCall
 
         },
         function(currentDepth, callback) {
-          isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri, anchor, isDoFollow, function(error, toCrawl) {
+          isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri, anchor, isDoFollow, function(error, info) {
               if (error) {
                 return callback(error);
               }
-              if (toCrawl && (result.depthLimit == -1 || currentDepth <= result.depthLimit)) {
+              if (info.toCrawl && (result.depthLimit == -1 || currentDepth <= result.depthLimit)) {
+                  result.isExternal = info.isExternal;
                   requester.queue(buildNewOptions(result,linkUri));
                   callback();
               }
@@ -568,27 +573,28 @@ function checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, endCall
 function isAGoodLinkToCrawl(result, currentDepth, parentUri, link, anchor, isDoFollow, callback) {
 
   store.getStore().isStartFromUrl(parentUri, link, function(error, startFrom){
-        
+
+        //console.log(parentUri, link, startFrom);
         // 1. Check if we need to crawl other hosts
         if (startFrom.link.isStartFromDomain && ! startFrom.link.isStartFromHost && ! result.externalHosts) {
           //console.log("External host : " + link);
           log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - no external host"});
-          return callback(null, false);
+          return callback(null, {toCrawl : false, isExternal : ! startFrom.link.isStartFromDomain});
         }
 
         // 2. Check if we need to crawl other domains
         if (! startFrom.link.isStartFromDomain &&  ! result.externalDomains) {
 
           log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - no external domain"});
-          return callback(null, false);
+          return callback(null, {toCrawl : false, isExternal : ! startFrom.link.isStartFromDomain});
         }
 
         // 3. Check if we need to crawl only the first pages of external hosts/domains
         if (result.firstExternalLinkOnly &&  ((! startFrom.link.isStartFromHost) || (! startFrom.link.isStartFromDomains))) {
-
+          //console.log("");
           if (! startFrom.parentUri.isStartFromHost) {
-            log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - no external host or domain (not the first link)"});
-            return callback(null, false);
+            log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - External link and not the first link)"});
+            return callback(null, {toCrawl : false, isExternal : ! startFrom.link.isStartFromDomain});
           }
         }
 
@@ -596,31 +602,31 @@ function isAGoodLinkToCrawl(result, currentDepth, parentUri, link, anchor, isDoF
         var protocol = URI.protocol(link);
         if (result.protocols.indexOf(protocol) < 0) {
           log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - no valid protocol : " + protocol});
-          return callback(null, false);
+          return callback(null, {toCrawl : false, isExternal : ! startFrom.link.isStartFromDomain});
         }
 
         // 5. Check if the domain is in the domain black-list
         if (result.domainBlackList.indexOf(URI.domainName(link)) > 0) {
           log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - domain is blacklisted" });
-          return callback(null, false);
+          return callback(null, {toCrawl : false, isExternal : ! startFrom.link.isStartFromDomain});
         }
 
         // 6. Check if the domain is in the suffix black-list
         var suffix = URI.suffix(link);
         if (result.suffixBlackList.indexOf(suffix) > 0) {
           log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - suffix is blacklisted"});
-          return callback(null, false);
+          return callback(null, {toCrawl : false, isExternal : ! startFrom.link.isStartFromDomain});
         }
 
         // 7. Check if there is a rule in the crawler configuration
         if (! result.canCrawl) {
           log.info({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "URL can be crawled"});
-          return callback(null, true);
+          return callback(null, {toCrawl : true, isExternal : ! startFrom.link.isStartFromDomain });
         }
         // TODO : asynch this function ?
         var check =  result.canCrawl(parentUri, link, anchor, isDoFollow);
         log.debug({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "method options.canCrawl has been called and return "} + check);
-        return callback(null, check);
+        return callback(null, {toCrawl : check, isExternal : ! startFrom.link.isStartFromDomain});
 
   });
 

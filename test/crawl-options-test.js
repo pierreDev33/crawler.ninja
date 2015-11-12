@@ -124,4 +124,28 @@ describe('Crawl Option tests', function() {
 
         });
 
+
+        it('Should recrawl url with 404', function(done) {
+
+            var end = function(){
+                assert(a.resources.get("http://localhost:9999/notfound").statusCode == 200);
+                assert(! a.resources.get("http://localhost:9999/notfound-2"));
+
+                done();
+
+            };
+            crawler.init({retry404 : true, retryTimeout:20}, end);
+            var a = new audit.Plugin();
+            //var cons = new cs.Plugin();
+            crawler.registerPlugin(a);
+            //crawler.registerPlugin(cons);
+
+            crawler.queue("http://localhost:9999/page13.html");
+            //crawler.queue("http://localhost:9999/notfound");
+
+
+        });
+
+
+
 });

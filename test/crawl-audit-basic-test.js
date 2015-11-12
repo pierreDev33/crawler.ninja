@@ -116,6 +116,7 @@ describe('Audit Plugin Basic tests', function() {
         it('Should crawl 404 urls', function(done) {
 
             var audit = new seoaudit.Plugin();
+            //var cons = new cs.Plugin();
             var end = function(){
 
                 var resource = audit.resources.get("http://localhost:9999/404-test.html");
@@ -129,6 +130,7 @@ describe('Audit Plugin Basic tests', function() {
 
             crawler.init(null, end);
             crawler.registerPlugin(audit);
+            //crawler.registerPlugin(cons);
 
             crawler.queue({url : "http://localhost:9999/page3.html"});
 

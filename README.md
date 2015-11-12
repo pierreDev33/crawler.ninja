@@ -459,3 +459,8 @@ ChangeLog
 - Gives the possibility to track a URL recrawl by the plugins
 - Bug fix
 - Review README.md
+
+
+0.1.19
+- Add in the crawl json param "isExternal". By this way, a plugin can check if the link is external or not.
+- Add a new option "retry404" : some sites provide inconsistent response for some urls (status 404 instead of 200). In such case, it should be nice to retry (this issuee needs to be analyzed in more detail).

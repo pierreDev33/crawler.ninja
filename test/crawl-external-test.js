@@ -2,7 +2,7 @@ var assert    = require("assert");
 var _         = require("underscore");
 var seoaudit  = require("../plugins/audit-plugin.js");
 var logger    = require("../plugins/console-plugin.js")
-
+var cs        = require("../plugins/console-plugin.js");
 var testSite  = require("./website/start.js").site;
 
 var crawler = require("../index.js");
@@ -58,4 +58,32 @@ describe('External Links', function() {
 
         });
 
+
+        it('Plugins Should verify if the link is external or not', function(done) {
+            var plugin = new TestPlugin();
+            var end = function(){
+                assert(plugin.isExternal);
+                done();
+            };
+
+            crawler.init({externalDomains : true, firstExternalLinkOnly: true}, end);
+            crawler.registerPlugin(plugin);
+            crawler.queue({url : "http://localhost:9999/page12.html"});
+
+        });
+
 });
+
+
+
+function TestPlugin() {
+    this.name = "Test-Plugin";
+}
+
+TestPlugin.prototype.crawl = function (result,$, callback) {
+
+      if (result.url === "http://cocoons.io/" && result.isExternal) {
+        this.isExternal = true;
+      }
+      callback();
+};

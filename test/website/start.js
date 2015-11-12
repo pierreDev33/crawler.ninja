@@ -9,6 +9,7 @@ var serveStatic = require('serve-static');
 var TEST_SITE_FOLDER = "./test/website/www";
 var site = express();
 
+var countNotFound = 0;
 
 site.get('/redirect', function(req, res) {
   res.redirect(301, '/page2.html');
@@ -58,6 +59,23 @@ site.get('/timeout4', function(req, res) {
     res.status(200).json({ message: 'This is a long process' });
   }, 500);
 });
+
+site.get('/notfound', function(req, res) {
+  if (countNotFound < 2) {
+      countNotFound++;
+      res.status(404).json({ error: 'Not Found' });
+  }
+  else {
+    res.status(200).json({ message: 'Hello world' });
+  }
+
+});
+
+site.get('/notfound-2', function(req, res) {
+  res.status(404).json({ error: 'Not Found' });
+
+});
+
 
 
 site.use(serveStatic(TEST_SITE_FOLDER));
