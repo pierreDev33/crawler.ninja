@@ -467,4 +467,4 @@ ChangeLog
 
 0.1.20
 - Review the default domain blacklist.
-- retry40* instead of onmy 404.
+- retry40* instead of 404.
