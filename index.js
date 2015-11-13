@@ -19,7 +19,7 @@ var DEFAULT_DEPTH_LIMIT = -1; // no limit
 var DEFAULT_TIME_OUT = 20000;
 var DEFAULT_RETRIES = 3;
 var DEFAULT_RETRY_TIMEOUT = 10000;
-var DEFAULT_RETRY_404 = false;
+var DEFAULT_RETRY_400 = false;
 var DEFAULT_SKIP_DUPLICATES = true;
 var DEFAULT_RATE_LIMITS = 0;
 
@@ -273,7 +273,7 @@ function createDefaultConfig(url) {
       suffixBlackList         : suffixBlackList,
       storeModuleName         : DEFAULT_STORE_MODULE,
       isExternal              : false,
-      retry404                : DEFAULT_RETRY_404
+      retry400                : DEFAULT_RETRY_400
 
   };
 

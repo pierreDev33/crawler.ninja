@@ -16,12 +16,12 @@ module.exports.list = function () {
     "pinterest",
     "foursquare",
     "instagram",
-    "last.fm",
+    "last",
     "wikipedia",
     "baidu",
     "academia",
     "feedburner",
-    "galleria.net",
+    "galleria",
     "socialmediatoday",
     "badoo",
     "bebo",
@@ -146,7 +146,9 @@ module.exports.list = function () {
     "zooppa",
     "zanox",
     "ovh",
-    "webadmax.com"
+    "webadmax",
+    "digg",
+    "amazon"
   ];
 
 }

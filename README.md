@@ -464,3 +464,7 @@ ChangeLog
 0.1.19
 - Add in the crawl json param "isExternal". By this way, a plugin can check if the link is external or not.
 - Add a new option "retry404" : some sites provide inconsistent response for some urls (status 404 instead of 200). In such case, it should be nice to retry (this issuee needs to be analyzed in more detail).
+
+0.1.20
+- Review the default domain blacklist.
+- retry40* instead of onmy 404.

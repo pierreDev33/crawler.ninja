@@ -134,7 +134,7 @@ describe('Crawl Option tests', function() {
                 done();
 
             };
-            crawler.init({retry404 : true, retryTimeout:20}, end);
+            crawler.init({retry400 : true, retryTimeout:20}, end);
             var a = new audit.Plugin();
             //var cons = new cs.Plugin();
             crawler.registerPlugin(a);
