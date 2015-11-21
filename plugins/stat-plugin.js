@@ -29,7 +29,8 @@ Plugin.prototype.unCrawl = function(parentUri, linkUri, anchor, isDoFollow, call
 };
 
 Plugin.prototype.error = function(error, result, callback) {
-       error.push(error);
+
+       self.data.errors.push(error);
        callback();
 };
 
