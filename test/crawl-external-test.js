@@ -47,7 +47,7 @@ describe('External Links', function() {
         it('Should not crawl domains that are in the black list', function(done) {
 
             var end = function(){
-                assert(audit.resources.toArray() === 0);
+                assert(audit.resources.toArray().length === 0);
                 assert(audit.errors.toArray()[0].error.code === "DOMAINBLACKLIST");
                 done();
             };
