@@ -1,7 +1,7 @@
 var assert    = require("assert");
 var _         = require("underscore");
 var seoaudit  = require("../plugins/audit-plugin.js");
-var logger    = require("../plugins/console-plugin.js")
+var logger    = require("../plugins/console-plugin.js");
 var cs        = require("../plugins/console-plugin.js");
 var testSite  = require("./website/start.js").site;
 
@@ -15,7 +15,7 @@ describe('External Links', function() {
 
                 assert(! audit.resources.get("http://www.nytimes.com"));
                 assert(! audit.resources.get("http://www.nytimes.com/"));
-                assert(audit.externalLinks.get("http://www.nytimes.com/") != null);
+                assert(audit.externalLinks.get("http://www.nytimes.com/") !== null);
                 done();
 
             };
@@ -32,7 +32,7 @@ describe('External Links', function() {
             var end = function(){
 
                 assert(audit.resources.get("http://www.nytimes.com/"));
-                assert(audit.externalLinks.get("http://www.nytimes.com/") != null);
+                assert(audit.externalLinks.get("http://www.nytimes.com/") !== null);
                 done();
 
             };
@@ -47,8 +47,8 @@ describe('External Links', function() {
         it('Should not crawl domains that are in the black list', function(done) {
 
             var end = function(){
-                assert(audit.resources.toArray() == 0);
-                assert(audit.errors.toArray()[0].error.code == "DOMAINBLACKLIST");
+                assert(audit.resources.toArray() === 0);
+                assert(audit.errors.toArray()[0].error.code === "DOMAINBLACKLIST");
                 done();
             };
             crawler.init(null, end);
