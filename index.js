@@ -131,6 +131,10 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
       }
   }
 
+  function setStore(newStore) {
+    store.setStore(newStore);
+
+  }
   /**
    * Add one or more urls to crawl
    *
@@ -191,9 +195,15 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
 
 function addInQueue(options) {
 
+  //TODO : review this code with async
   http.checkRedirect(_.has(options, "url") ? options.url : options.uri, function(error, targetUrl){
     store.getStore().addStartUrls([targetUrl, _.has(options, "url") ? options.url : options.uri], function(error) {
-        requester.queue(options);
+        requester.queue(options, function(error){
+          log.debug({"url" : options.url, "step" : "addInQueue", "message" : "Url correctly added in the queue"});
+          if (requester.idle()){
+            endCallback();
+          }
+        });
     });
   });
 
@@ -330,14 +340,12 @@ function applyRedirect(result, callback) {
   if (result.statusCode >= 300 && result.statusCode <= 399  &&  ! result.followRedirect) {
 
       var from = result.uri;
-      var to = result.headers["location"];
-      var to = URI.linkToURI(from, to);
+      var to = URI.linkToURI(from, result.headers.location);
 
       // Send the redirect info to the plugins &
       // Add the link "to" the request queue
       pm.crawlRedirect(from, to, result.statusCode, function(){
-        requester.queue(buildNewOptions(result,to));
-        callback();
+        requester.queue(buildNewOptions(result,to), callback);
       });
   }
   else {
@@ -354,6 +362,7 @@ function applyRedirect(result, callback) {
  *        is not an HTML
  */
 function analyzeHTML(result, $, callback) {
+
   // if $ is note defined, this is not a HTML page with an http status 200
   if (! $) {
     return callback();
@@ -383,7 +392,6 @@ function analyzeHTML(result, $, callback) {
 function crawlHrefs(result, $, endCallback) {
 
     log.debug({"url" : result.url, "step" : "analyzeHTML", "message" : "CrawlHrefs"});
-
     async.each($('a'), function(a, callback) {
         crawlHref($, result, a, callback);
     }, endCallback);
@@ -543,15 +551,21 @@ function checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, endCall
         },
         function(currentDepth, callback) {
           isAGoodLinkToCrawl(result, currentDepth, parentUri, linkUri, anchor, isDoFollow, function(error, info) {
+
               if (error) {
                 return callback(error);
               }
-              if (info.toCrawl && (result.depthLimit == -1 || currentDepth <= result.depthLimit)) {
+
+
+
+              if (info.toCrawl && (result.depthLimit === -1 || currentDepth <= result.depthLimit)) {
                   result.isExternal = info.isExternal;
-                  requester.queue(buildNewOptions(result,linkUri));
-                  callback();
+                  requester.queue(buildNewOptions(result,linkUri), callback);
+
               }
               else {
+                log.info({"url" : linkUri, "step" : "checkUrlToCrawl", "message" : "Don't crawl the url",
+                          "options" : {isGoogLink : info.toCrawl, depthLimit : result.depthLimit, currentDepth : currentDepth }});
                 pm.unCrawl(parentUri, linkUri, anchor, isDoFollow, callback);
               }
 
@@ -574,10 +588,8 @@ function isAGoodLinkToCrawl(result, currentDepth, parentUri, link, anchor, isDoF
 
   store.getStore().isStartFromUrl(parentUri, link, function(error, startFrom){
 
-        //console.log(parentUri, link, startFrom);
         // 1. Check if we need to crawl other hosts
         if (startFrom.link.isStartFromDomain && ! startFrom.link.isStartFromHost && ! result.externalHosts) {
-          //console.log("External host : " + link);
           log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - no external host"});
           return callback(null, {toCrawl : false, isExternal : ! startFrom.link.isStartFromDomain});
         }
@@ -591,7 +603,6 @@ function isAGoodLinkToCrawl(result, currentDepth, parentUri, link, anchor, isDoF
 
         // 3. Check if we need to crawl only the first pages of external hosts/domains
         if (result.firstExternalLinkOnly &&  ((! startFrom.link.isStartFromHost) || (! startFrom.link.isStartFromDomains))) {
-          //console.log("");
           if (! startFrom.parentUri.isStartFromHost) {
             log.warn({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "Don't crawl url - External link and not the first link)"});
             return callback(null, {toCrawl : false, isExternal : ! startFrom.link.isStartFromDomain});
@@ -656,9 +667,9 @@ function updateDepth(parentUri, linkUri, callback) {
 
     execFns(depths, function (error, result) {
       if (error) {
-        callback(error);
+         return callback(error);
       }
-      return callback(error, result.linkDepth);
+      callback(error, result.linkDepth);
     });
 
 }
@@ -732,6 +743,7 @@ function saveDepths(depths, callback) {
 
 module.exports.init = init;
 module.exports.queue = queue;
+module.exports.setStore = setStore;
 module.exports.registerPlugin = registerPlugin;
 module.exports.unregisterPlugin = unregisterPlugin;
 

@@ -468,3 +468,8 @@ ChangeLog
 0.1.20
 - Review the default domain blacklist.
 - retry40* instead of 404.
+
+0.2.0
+- Add support for external Crawler DB/Store like Redis.
+- Build a Redis Store (external module).
+- 
