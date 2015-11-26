@@ -460,7 +460,6 @@ ChangeLog
 - Bug fix
 - Review README.md
 
-
 0.1.19
 - Add in the crawl json param "isExternal". By this way, a plugin can check if the link is external or not.
 - Add a new option "retry404" : some sites provide inconsistent response for some urls (status 404 instead of 200). In such case, it should be nice to retry (this issuee needs to be analyzed in more detail).
@@ -470,6 +469,7 @@ ChangeLog
 - retry40* instead of 404.
 
 0.2.0
-- Add support for external Crawler DB/Store like Redis.
+- Add support for external Crawler DB/Store like Redis or any kind of Database.
 - Build a Redis Store (external module).
-- 
+- Add support for a more robust request queue. The current implementation is based on async.queue. Now, it is possible to replace this request queue by another one.
+- Build a Redis Job Queue (external module).

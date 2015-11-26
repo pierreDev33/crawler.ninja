@@ -1,18 +1,17 @@
-var timers      = require('timers');
-var util        = require("util");
-var _           = require("underscore");
-var async       = require('async');
-var log         = require("crawler-ninja-logger").Logger;
-var requester   = require("./lib/queue-requester");
-var http        = require("./lib/http-request.js");
-var URI         = require('crawler-ninja-uri');
-var html        = require("./lib/html.js");
-var store       = require("./lib/store/store.js");
-var plugin      = require("./lib/plugin-manager.js");
+var timers       = require('timers');
+var util         = require("util");
+var _            = require("underscore");
+var async        = require('async');
+var log          = require("crawler-ninja-logger").Logger;
+var requestQueue = require("./lib/request-queue.js");
+var http         = require("./lib/http-request.js");
+var URI          = require('crawler-ninja-uri');
+var html         = require("./lib/html.js");
+var store        = require("./lib/store/store.js");
+var plugin       = require("./lib/plugin-manager.js");
 
 var domainBlackList  = require("./default-lists/domain-black-list.js").list();
 var suffixBlackList  = require("./default-lists/suffix-black-list.js").list();
-
 
 var DEFAULT_NUMBER_OF_CONNECTIONS = 5;
 var DEFAULT_DEPTH_LIMIT = -1; // no limit
@@ -60,9 +59,9 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
   /**
    * Init the crawler
    *
-   * @param config used to customize the crawler.
+   * @param options used to customize the crawler.
    *
-   *  The current config attributes are :
+   *  The current options attributes are :
    *  - skipDuplicates        : if true skips URIs that were already crawled - default is true
    *  - maxConnections        : the number of connections used to crawl - default is 5
    *  - rateLimits            : number of milliseconds to delay between each requests (Default 0).
@@ -88,21 +87,21 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
    *
    * @param callback() called when all URLs have been crawled
    * @param proxies to used when making http requests (optional)
-   * @param logLevel : a new log level (eg. debug) (oprional, default value is info)
+   * @param logLevel : a new log level (eg. "debug") (optional, default value is info)
    */
 
-  function init(config, callback, proxies, logLevel) {
+  function init(options, callback, proxies, logLevel) {
 
       if (! callback) {
         log.error("The end callback is not defined");
       }
 
-      // Default config
-      globalOptions = createDefaultConfig();
+      // Default options
+      globalOptions = createDefaultOptions();
 
-      // Merge default config values & overridden values provided by the arg config
-      if (config) {
-        _.extend(globalOptions, config);
+      // Merge default options values & overridden values provided by the arg options
+      if (options) {
+        _.extend(globalOptions, options);
       }
 
       // if using rateLimits we want to use only one connection with delay between requests
@@ -113,14 +112,14 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
       // create the crawl store
       store.createStore(globalOptions.storeModuleName, globalOptions.storeParams ? globalOptions.storeParams : null);
 
-      // If the config object contains an new implementation of the updateDepth method
+      // If the options object contains an new implementation of the updateDepth method
       if (globalOptions.updateDepth) {
         updateDepthFn = globalOptions.updateDepth;
       }
 
       // Init the crawl queue
       endCallback = callback;
-      requester.init(globalOptions.maxConnections, crawl, recrawl, endCallback, proxies);
+      requestQueue.init(globalOptions.maxConnections, crawl, recrawl, endCallback, proxies);
 
       if (logLevel) {
         console.log("Change Log level into :" + logLevel);
@@ -131,14 +130,26 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
       }
   }
 
+  /**
+   *
+   * Set the Crawl Store. See the memory-store.js as an example
+   *
+   * @param The Store to used
+   *
+   */
   function setStore(newStore) {
     store.setStore(newStore);
 
   }
+
   /**
    * Add one or more urls to crawl
    *
-   * @param The url(s) to crawl
+   * @param The url(s) to crawl. This could one of the following possibilities :
+   * - A simple String matching to an URL. In this case the default options will be used.
+   * - An array of String matching to a list of URLs. In this case the default options will be used.
+   * - A Crawl option object containing a URL and a set of options (see the method init to get the list)
+   * - An array of crawl options
    *
    */
  function queue(options) {
@@ -152,7 +163,7 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
 
         crawl({errorCode : "NO_OPTIONS"}, {method:"GET", url : "unknown", proxy : "", error : true},
               function(error){
-                  if (requester.idle()) {
+                  if (requestQueue.idle()) {
                       endCallback();
                   }
               });
@@ -181,7 +192,7 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
 
             crawl({errorCode : "NO_URL_OPTION"}, {method:"GET", url : "unknown", proxy : "", error : true},
                   function(error){
-                      if (requester.idle()) {
+                      if (requestQueue.idle()) {
                           endCallback();
                       }
                   });
@@ -193,14 +204,21 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
 
 }
 
+/**
+ *
+ *  Add a new url in the queue
+ *
+ * @param The url to add (with its crawl option)
+ *
+ */
 function addInQueue(options) {
 
   //TODO : review this code with async
-  http.checkRedirect(_.has(options, "url") ? options.url : options.uri, function(error, targetUrl){
+  http.resolveRedirection(_.has(options, "url") ? options.url : options.uri, function(error, targetUrl){
     store.getStore().addStartUrls([targetUrl, _.has(options, "url") ? options.url : options.uri], function(error) {
-        requester.queue(options, function(error){
+        requestQueue.queue(options, function(error){
           log.debug({"url" : options.url, "step" : "addInQueue", "message" : "Url correctly added in the queue"});
-          if (requester.idle()){
+          if (requestQueue.idle()){
             endCallback();
           }
         });
@@ -215,7 +233,8 @@ function addInQueue(options) {
  *
  *
  * @param the option used for the current request
- * @return
+ * @param The default options
+ * @return the modified option object
  */
  function addDefaultOptions(options, defaultOptions) {
 
@@ -235,7 +254,7 @@ function addInQueue(options) {
  */
  function buildNewOptions (options, newUrl) {
 
-    var o = createDefaultConfig(newUrl);
+    var o = createDefaultOptions(newUrl);
 
     // Copy only options attributes that are in the options used for the previous request
     // Could be more simple ? ;-)
@@ -253,13 +272,13 @@ function addInQueue(options) {
 
 
 /**
- * Default crawler config
+ * Create the default crawl options
  *
- * @returns the config object
+ * @returns the default crawl options
  */
-function createDefaultConfig(url) {
+function createDefaultOptions(url) {
 
-  var config = {
+  var options = {
       method                  : DEFAULT_METHOD,
       referer                 : DEFAULT_REFERER,
       skipDuplicates          : DEFAULT_SKIP_DUPLICATES,
@@ -288,19 +307,20 @@ function createDefaultConfig(url) {
   };
 
   if (url) {
-    config.url = url;
-    config.uri = url;
+    options.url = url;
+    options.uri = url;
   }
 
-  return config;
+  return options;
 
 }
 
 /**
- * Default callback function used when the http queue requester get a resource (html, pdf, css, ...) or an error
+ * Default callback used when the http request queue gets a resource (html, pdf, css, ...) or an error
  *
- * @param error : the usual nodejs error
- * @param result: the crawled resource
+ * @param the HTTP error (if exist)
+ * @param The HTTP result with the crawl options
+ * @param callback(error)
  *
  */
 function crawl(error, result, callback) {
@@ -331,10 +351,22 @@ function crawl(error, result, callback) {
 
 }
 
+/**
+ *
+ * Inform plugin of a recrawl
+ *
+ */
 function recrawl(error, result, callback) {
   pm.recrawl(error,result, callback);
 }
 
+/**
+ *
+ * Manage a redirection response
+ *
+ * @param the Http response/result with the crawl option
+ * @param callback()
+ */
 function applyRedirect(result, callback) {
   // if 30* & followRedirect = false => chain 30*
   if (result.statusCode >= 300 && result.statusCode <= 399  &&  ! result.followRedirect) {
@@ -345,7 +377,7 @@ function applyRedirect(result, callback) {
       // Send the redirect info to the plugins &
       // Add the link "to" the request queue
       pm.crawlRedirect(from, to, result.statusCode, function(){
-        requester.queue(buildNewOptions(result,to), callback);
+        requestQueue.queue(buildNewOptions(result,to), callback);
       });
   }
   else {
@@ -357,9 +389,10 @@ function applyRedirect(result, callback) {
 /**
  * Analyze an HTML page. Mainly, found a.href, links,scripts & images in the page
  *
- * @param result : the result of the crawled resource
+ * @param The Http response with the crawl option
  * @param the jquery like object for accessing to the HTML tags. Null is the resource
  *        is not an HTML
+ * @param callback()
  */
 function analyzeHTML(result, $, callback) {
 
@@ -385,8 +418,9 @@ function analyzeHTML(result, $, callback) {
 /**
  * Crawl urls that match to HTML tags a.href found in one page
  *
- * @param result : the result of the crawled resource
+ * @param The Http response with the crawl option
  * @param the jquery like object for accessing to the HTML tags.
+ * @param callback()
  *
  */
 function crawlHrefs(result, $, endCallback) {
@@ -398,6 +432,15 @@ function crawlHrefs(result, $, endCallback) {
 
 }
 
+/**
+ *  Extract info of ahref & send the info to the plugins
+ *
+ *
+ * @param The HTML body containing the link (Cheerio wraper)
+ * @param The http response with the crawl options
+ * @param The anchor tag
+ * @param callback()
+ */
 function crawlHref($,result, a, callback) {
 
       var link = $(a).attr('href');
@@ -411,7 +454,7 @@ function crawlHref($,result, a, callback) {
         var linkUri = URI.linkToURI(parentUri, link);
 
         pm.crawlLink(parentUri, linkUri, anchor, isDoFollow, function(){
-          checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, callback);
+          addLinkToQueue(result, parentUri, linkUri, anchor, isDoFollow, callback);
         });
 
       }
@@ -426,8 +469,9 @@ function crawlHref($,result, a, callback) {
  * Crawl link tags found in the HTML page
  * eg. : <link rel="stylesheet" href="/css/bootstrap.min.css">
  *
- * @param result : the result of the crawled resource
+ * @param The HTTP result with the crawl options
  * @param the jquery like object for accessing to the HTML tags.
+ * @param callback()
  */
 function crawlLinks(result, $, endCallback) {
 
@@ -442,6 +486,15 @@ function crawlLinks(result, $, endCallback) {
     }, endCallback);
 }
 
+/**
+ *  Extract info of html link tag & send the info to the plugins
+ *
+ *
+ * @param The HTML body containing the link (Cheerio wraper)
+ * @param The http response with the crawl options
+ * @param The link tag
+ * @param callback()
+ */
 function crawLink($,result,linkTag, callback) {
       var link = $(linkTag).attr('href');
       var parentUri = result.uri;
@@ -454,7 +507,7 @@ function crawLink($,result,linkTag, callback) {
               var linkUri = URI.linkToURI(parentUri, link);
 
               pm.crawlLink(parentUri, linkUri, null, null, function(){
-                checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
+                addLinkToQueue(result, parentUri, linkUri, null, null, callback);
               });
           }
           else {
@@ -470,8 +523,9 @@ function crawLink($,result,linkTag, callback) {
 /**
  * Crawl script tags found in the HTML page
  *
- * @param result : the result of the crawled resource
+ * @param The HTTP response with the crawl options
  * @param the jquery like object for accessing to the HTML tags.
+ * @param callback()
  */
 function crawlScripts(result, $, endCallback) {
 
@@ -486,6 +540,15 @@ function crawlScripts(result, $, endCallback) {
     }, endCallback);
 }
 
+/**
+ *  Extract info of script tag & send the info to the plugins
+ *
+ *
+ * @param The HTML body containing the script tag (Cheerio wraper)
+ * @param The http response with the crawl options
+ * @param The script tag
+ * @param callback()
+ */
 function crawlScript($,result, script, callback) {
 
     var link = $(script).attr('src');
@@ -494,7 +557,7 @@ function crawlScript($,result, script, callback) {
     if (link) {
           var linkUri = URI.linkToURI(parentUri, link);
           pm.crawlLink(parentUri, linkUri, null, null, function(){
-            checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
+            addLinkToQueue(result, parentUri, linkUri, null, null, callback);
           });
     }
     else {
@@ -508,8 +571,9 @@ function crawlScript($,result, script, callback) {
 /**
  * Crawl image tags found in the HTML page
  *
- * @param result : the result of the crawled resource
+ * @param The HTTP response with the crawl options
  * @param the jquery like object for accessing to the HTML tags.
+ * @param callback()
  */
 function crawlImages(result, $, endCallback) {
 
@@ -524,6 +588,15 @@ function crawlImages(result, $, endCallback) {
     }, endCallback);
 }
 
+/**
+ *  Extract info of an image tag & send the info to the plugins
+ *
+ *
+ * @param The HTML body containing the link (Cheerio wraper)
+ * @param The http response with the crawl options
+ * @param The image tag
+ * @param callback()
+ */
 function crawlImage ($,result, img, callback) {
       var parentUri = result.uri;
 
@@ -532,7 +605,7 @@ function crawlImage ($,result, img, callback) {
       if (link) {
           var linkUri = URI.linkToURI(parentUri, link);
           pm.crawlImage(parentUri, linkUri, alt, function(){
-            checkUrlToCrawl(result, parentUri, linkUri, null, null, callback);
+            addLinkToQueue(result, parentUri, linkUri, null, null, callback);
           });
       }
       else {
@@ -540,7 +613,17 @@ function crawlImage ($,result, img, callback) {
       }
 }
 
-function checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, endCallback) {
+/**
+ *  Add a new link to the queue in order to be cralw (based on some conditions)
+ *
+ * @param the HTTP response with the crawl option
+ * @param the url of the page that contains the link
+ * @param the link matching to an HTTP resource
+ * @param the anchor text of the link
+ * @param true if the link is in dofollow
+ * @param callback(error)
+ */
+function addLinkToQueue(result, parentUri, linkUri, anchor, isDoFollow, endCallback) {
 
     async.waterfall([
         function(callback) {
@@ -556,15 +639,13 @@ function checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, endCall
                 return callback(error);
               }
 
-
-
               if (info.toCrawl && (result.depthLimit === -1 || currentDepth <= result.depthLimit)) {
                   result.isExternal = info.isExternal;
-                  requester.queue(buildNewOptions(result,linkUri), callback);
+                  requestQueue.queue(buildNewOptions(result,linkUri), callback);
 
               }
               else {
-                log.info({"url" : linkUri, "step" : "checkUrlToCrawl", "message" : "Don't crawl the url",
+                log.info({"url" : linkUri, "step" : "addLinkToQueue", "message" : "Don't crawl the url",
                           "options" : {isGoogLink : info.toCrawl, depthLimit : result.depthLimit, currentDepth : currentDepth }});
                 pm.unCrawl(parentUri, linkUri, anchor, isDoFollow, callback);
               }
@@ -577,12 +658,15 @@ function checkUrlToCrawl(result, parentUri, linkUri, anchor, isDoFollow, endCall
 
 
 /**
- * Check if a link has to be crawled
+ * Check if a link has to be crawled/ can be added into the queue
  *
- * @param the link url
- * @param the anchor text of the links
- * @param true if the link is dofollow
- * @returns
+ * @param the HTTP response with the crawl option
+ * @param the current crawl depth
+ * @param the url of the page that contains the link
+ * @param the link matching to an HTTP resource
+ * @param the anchor text of the link
+ * @param true if the link is in dofollow
+ * @param callback(error)
  */
 function isAGoodLinkToCrawl(result, currentDepth, parentUri, link, anchor, isDoFollow, callback) {
 
@@ -629,7 +713,7 @@ function isAGoodLinkToCrawl(result, currentDepth, parentUri, link, anchor, isDoF
           return callback(null, {toCrawl : false, isExternal : ! startFrom.link.isStartFromDomain});
         }
 
-        // 7. Check if there is a rule in the crawler configuration
+        // 7. Check if there is a rule in the crawler options
         if (! result.canCrawl) {
           log.info({"url" : link, "step" : "isAGoodLinkToCrawl", "message" : "URL can be crawled"});
           return callback(null, {toCrawl : true, isExternal : ! startFrom.link.isStartFromDomain });
@@ -643,10 +727,24 @@ function isAGoodLinkToCrawl(result, currentDepth, parentUri, link, anchor, isDoF
 
 }
 
+/**
+ *  Register a new plugin
+ *
+ *
+ * @param The plugin
+ *
+ */
 function registerPlugin(plugin) {
     pm.registerPlugin(plugin);
 }
 
+/**
+ *
+ *  Unregister a plugin
+ *
+ * @param The plugin
+ *
+ */
 function unregisterPlugin(plugin) {
     pm.unregisterPlugin(plugin);
 }

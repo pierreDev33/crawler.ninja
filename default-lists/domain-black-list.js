@@ -151,4 +151,4 @@ module.exports.list = function () {
     "amazon"
   ];
 
-}
+};
