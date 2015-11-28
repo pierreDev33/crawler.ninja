@@ -348,6 +348,16 @@ var options = {
 
 ```
 
+The Crawl Store
+---------------
+<add>doc!</add>
+
+
+The Crawl Job Queue
+-------------------
+<add>doc!</add>
+
+
 
 Utilities
 ---------

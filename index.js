@@ -3,8 +3,8 @@ var util         = require("util");
 var _            = require("underscore");
 var async        = require('async');
 var log          = require("crawler-ninja-logger").Logger;
-var requestQueue = require("./lib/request-queue.js");
-var http         = require("./lib/http-request.js");
+var requestQueue = require("./lib/queue/request-queue.js");
+var http         = require("./lib/http/http-request.js");
 var URI          = require('crawler-ninja-uri');
 var html         = require("./lib/html.js");
 var store        = require("./lib/store/store.js");
@@ -42,7 +42,7 @@ var DEFAULT_METHOD = 'GET';
 var DEFAULT_REFERER = false;
 
 var DEFAULT_STORE_MODULE = "./memory-store.js";
-
+var DEFAULT_QUEUE_MODULE = "./async-queue.js";
 
 (function () {
 
@@ -80,8 +80,10 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
    *  - depthLimit            : the depth limit for the crawl
    *  - followRedirect        : if true, the crawl will not return the 301, it will follow directly the redirection
    *  - proxyList             : the list of proxies (see the project simple-proxies on npm)
-   *  - storeModuleName       : the npm nodule name used for the store implementation, by default memory-store
+   *  - storeModuleName       : the npm nodule name used for the store implementation, by default  : memory-store
    *  - storeParams           : the params to pass to the store module when create it.
+   *  - queueModuleName       : the npm module name used for the job queue. By default : async-queue
+   *  - queueParams           : the params to pass to the job queue when create it. 
    *
    *  + all options provided by nodejs request : https://github.com/request/request
    *
@@ -119,7 +121,7 @@ var DEFAULT_STORE_MODULE = "./memory-store.js";
 
       // Init the crawl queue
       endCallback = callback;
-      requestQueue.init(globalOptions.maxConnections, crawl, recrawl, endCallback, proxies);
+      requestQueue.init(globalOptions, crawl, recrawl, endCallback, proxies);
 
       if (logLevel) {
         console.log("Change Log level into :" + logLevel);
@@ -300,9 +302,10 @@ function createDefaultOptions(url) {
       userAgent               : DEFAULT_USER_AGENT,
       domainBlackList         : domainBlackList,
       suffixBlackList         : suffixBlackList,
-      storeModuleName         : DEFAULT_STORE_MODULE,
+      retry400                : DEFAULT_RETRY_400,
       isExternal              : false,
-      retry400                : DEFAULT_RETRY_400
+      storeModuleName         : DEFAULT_STORE_MODULE,
+      queueModuleName         : DEFAULT_QUEUE_MODULE
 
   };
 
