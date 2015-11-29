@@ -38,7 +38,6 @@ var DEFAULT_FOLLOW_301 = false;
 var DEFAULT_LINKS_TYPES = ["canonical", "stylesheet", "icon"];
 var DEFAULT_USER_AGENT = "NinjaBot";
 var DEFAULT_CACHE = false;
-var DEFAULT_METHOD = 'GET';
 var DEFAULT_REFERER = false;
 
 var DEFAULT_STORE_MODULE = "./memory-store.js";
@@ -83,7 +82,7 @@ var DEFAULT_QUEUE_MODULE = "./async-queue.js";
    *  - storeModuleName       : the npm nodule name used for the store implementation, by default  : memory-store
    *  - storeParams           : the params to pass to the store module when create it.
    *  - queueModuleName       : the npm module name used for the job queue. By default : async-queue
-   *  - queueParams           : the params to pass to the job queue when create it. 
+   *  - queueParams           : the params to pass to the job queue when create it.
    *
    *  + all options provided by nodejs request : https://github.com/request/request
    *
@@ -281,7 +280,6 @@ function addInQueue(options) {
 function createDefaultOptions(url) {
 
   var options = {
-      method                  : DEFAULT_METHOD,
       referer                 : DEFAULT_REFERER,
       skipDuplicates          : DEFAULT_SKIP_DUPLICATES,
       maxConnections          : DEFAULT_NUMBER_OF_CONNECTIONS,
