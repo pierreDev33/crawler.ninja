@@ -222,7 +222,7 @@ function addInQueue(options) {
           if (requestQueue.idle()){
             endCallback();
           }
-        });
+        });         
     });
   });
 
